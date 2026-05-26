@@ -17,7 +17,7 @@ export function TippenPage() {
   const groups = useMemo(() => {
     const now = Date.now();
     const upcoming = (matches ?? [])
-      .filter((m) => new Date(m.kickoff).getTime() > now)
+      .filter((m) => !m.result && new Date(m.kickoff).getTime() > now)
       .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
     const finished = (matches ?? [])
       .filter((m) => m.result)
@@ -54,7 +54,8 @@ export function TippenPage() {
         {groups.upcoming.length === 0 && (
           <Card>
             <CardContent className="p-5 text-center text-sm text-muted-foreground">
-              Keine kommenden Spiele bekannt. FuPa wird automatisch synchronisiert.
+              Keine tippbaren Spiele gerade. Beim ersten Besuch werden Spiele automatisch von FuPa
+              geladen – Seite kurz neu laden. Oder Admin → Spiele → „Jetzt scrapen“.
             </CardContent>
           </Card>
         )}

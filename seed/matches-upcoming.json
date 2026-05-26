@@ -1,0 +1,24 @@
+[
+  {
+    "id": "fupa-spvgg-roehrmoos-grossinzemoos-m1-sv-petershausen-m1-260531",
+    "team": 1,
+    "opponent": "SpVgg Röhrmoos-Großinzemoos",
+    "homeAway": "away",
+    "kickoff": "2026-05-31T14:30:00+02:00",
+    "league": "Kreisklasse München 1",
+    "location": "Heimspielstätte Röhrmoos",
+    "source": "fupa",
+    "updatedAt": "2026-05-26T00:00:00.000Z"
+  },
+  {
+    "id": "fupa-spvgg-roehrmoos-grossinzemoos-m2-sv-petershausen-m2-260531",
+    "team": 2,
+    "opponent": "SpVgg Röhrmoos-Großinzemoos",
+    "homeAway": "away",
+    "kickoff": "2026-05-31T12:00:00+02:00",
+    "league": "C-Klasse München 1",
+    "location": "Heimspielstätte Röhrmoos",
+    "source": "fupa",
+    "updatedAt": "2026-05-26T00:00:00.000Z"
+  }
+]

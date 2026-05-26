@@ -8,6 +8,7 @@ import type {
 import seedUsers from "../../../seed/users.json" with { type: "json" };
 import seedCatalog from "../../../seed/catalog.json" with { type: "json" };
 import seedPlayers from "../../../seed/players.json" with { type: "json" };
+import { ensureMatchesPopulated } from "./matches-init.ts";
 
 const SEED_VERSION = 1;
 const META_KEY = "seed-version";
@@ -25,7 +26,8 @@ export async function ensureSeed(): Promise<void> {
       throw err;
     });
   }
-  return cachedSeed;
+  await cachedSeed;
+  await ensureMatchesPopulated();
 }
 
 async function runSeed(): Promise<void> {
