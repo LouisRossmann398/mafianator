@@ -1,0 +1,100 @@
+[
+  {
+    "id": "gelbe-karte-meckern",
+    "label": "Gelbe Karte (Meckern)",
+    "defaultAmount": 1,
+    "category": "Karte",
+    "canGamble": true
+  },
+  {
+    "id": "gelbe-karte-foul",
+    "label": "Gelbe Karte (Foul)",
+    "defaultAmount": 0.5,
+    "category": "Karte",
+    "canGamble": true
+  },
+  {
+    "id": "gelb-rote-karte",
+    "label": "Gelb-Rote Karte",
+    "defaultAmount": 5,
+    "category": "Karte",
+    "canGamble": true
+  },
+  {
+    "id": "rote-karte",
+    "label": "Rote Karte",
+    "defaultAmount": 10,
+    "category": "Karte",
+    "canGamble": false
+  },
+  {
+    "id": "verspaetung-training",
+    "label": "Verspätung Training",
+    "defaultAmount": 2,
+    "category": "Pünktlichkeit",
+    "canGamble": true
+  },
+  {
+    "id": "verspaetung-spiel",
+    "label": "Verspätung Spiel",
+    "defaultAmount": 5,
+    "category": "Pünktlichkeit",
+    "canGamble": true
+  },
+  {
+    "id": "unentschuldigt-training",
+    "label": "Unentschuldigt Training",
+    "defaultAmount": 5,
+    "category": "Pünktlichkeit",
+    "canGamble": true
+  },
+  {
+    "id": "unentschuldigt-spiel",
+    "label": "Unentschuldigt Spiel",
+    "defaultAmount": 15,
+    "category": "Pünktlichkeit",
+    "canGamble": false
+  },
+  {
+    "id": "handy-besprechung",
+    "label": "Handy bei Besprechung",
+    "defaultAmount": 2,
+    "category": "Verhalten",
+    "canGamble": true
+  },
+  {
+    "id": "falsche-kleidung",
+    "label": "Falsche Trainingskleidung",
+    "defaultAmount": 1,
+    "category": "Verhalten",
+    "canGamble": true
+  },
+  {
+    "id": "duschen-vergessen",
+    "label": "Duschen vergessen",
+    "defaultAmount": 3,
+    "category": "Verhalten",
+    "canGamble": true
+  },
+  {
+    "id": "geburtstag-vergessen",
+    "label": "Geburtstag vergessen (kein Kuchen)",
+    "defaultAmount": 5,
+    "category": "Verhalten",
+    "canGamble": true
+  },
+  {
+    "id": "eigentor",
+    "label": "Eigentor",
+    "defaultAmount": 3,
+    "category": "Spiel",
+    "canGamble": true
+  },
+  {
+    "id": "elfer-verschossen",
+    "label": "Elfmeter verschossen",
+    "defaultAmount": 2,
+    "category": "Spiel",
+    "canGamble": true
+  }
+]

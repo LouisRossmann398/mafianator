@@ -1,0 +1,30 @@
+[
+  {
+    "username": "admin",
+    "passwordHash": "$2a$12$V.SI.9jWVKysjgCYU7jH0ehmT1SgeMtmuQ6Sfp0VZWhz8APL7xqfO",
+    "role": "admin",
+    "playerId": "admin",
+    "displayName": "Administrator"
+  },
+  {
+    "username": "johannes.bauer",
+    "passwordHash": "$2a$12$3SysrB9VRJc9IcWgnQaOkeWCYuGA6RkSuNCfoqIQgmqMSXJueTx6C",
+    "role": "treasurer",
+    "playerId": "johannes-bauer",
+    "displayName": "Johannes Bauer"
+  },
+  {
+    "username": "alessandro.micieli",
+    "passwordHash": "$2a$12$by.CVeEUKIIe/fUPo02dAuzB3oGPgJ935iD.hlsJS8uAKqH8U7irq",
+    "role": "treasurer",
+    "playerId": "alessandro-micieli",
+    "displayName": "Alessandro Micieli"
+  },
+  {
+    "username": "demo.spieler",
+    "passwordHash": "$2a$12$1dtDGHjJZdQ/A6M37o4ZMupBzvU/Pvr73zxnmoe0dF43eGEqwau/C",
+    "role": "player",
+    "playerId": "demo-spieler",
+    "displayName": "Demo Spieler"
+  }
+]

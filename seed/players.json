@@ -1,0 +1,26 @@
+[
+  {
+    "id": "admin",
+    "name": "Administrator",
+    "team": 1,
+    "active": false
+  },
+  {
+    "id": "johannes-bauer",
+    "name": "Johannes Bauer",
+    "team": 1,
+    "active": true
+  },
+  {
+    "id": "alessandro-micieli",
+    "name": "Alessandro Micieli",
+    "team": 1,
+    "active": true
+  },
+  {
+    "id": "demo-spieler",
+    "name": "Demo Spieler",
+    "team": 1,
+    "active": true
+  }
+]
