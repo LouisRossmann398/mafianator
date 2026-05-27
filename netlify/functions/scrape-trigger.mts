@@ -11,7 +11,7 @@ export default async (req: Request): Promise<Response> => {
     return json({ status });
   }
   if (req.method !== "POST") return notAllowed(["POST", "GET"]);
-  const auth = await requireAuth(req, ["admin"]);
+  const auth = await requireAuth(req);
   if (!auth.ok) return auth.response;
   try {
     const status = await runScrape();

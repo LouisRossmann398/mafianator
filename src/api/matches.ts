@@ -9,6 +9,8 @@ export function useMatches(team?: TeamId) {
       const qs = team ? `?team=${team}` : "";
       return apiFetch<{ matches: Match[] }>(`/matches${qs}`).then((d) => d.matches);
     },
+    retry: 1,
+    staleTime: 60_000,
   });
 }
 
@@ -61,7 +63,14 @@ export function useDeleteMatch() {
 export function useTriggerScrape() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => apiFetch<{ updated: number; total: number }>("/scrape-trigger", { method: "POST" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["matches"] }),
+    mutationFn: () =>
+      apiFetch<{ status: { matchesTotal: number; matchesCreated: number; matchesUpdated: number } }>(
+        "/scrape-trigger",
+        { method: "POST" },
+      ).then((d) => d.status),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["matches"] });
+      qc.invalidateQueries({ queryKey: ["scrape-status"] });
+    },
   });
 }

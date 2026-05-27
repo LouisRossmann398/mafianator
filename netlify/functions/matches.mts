@@ -17,11 +17,14 @@ export default async (req: Request): Promise<Response> => {
   if (req.method === "GET") {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
-    const rawMatches = await stores$.matches().all();
+    let rawMatches = await stores$.matches().all();
     if (rawMatches.length === 0) {
-      void ensureMatchesPopulated().catch((e) =>
-        console.error("[matches] background populate failed", e),
-      );
+      try {
+        await ensureMatchesPopulated();
+        rawMatches = await stores$.matches().all();
+      } catch (e) {
+        console.error("[matches] populate failed", e);
+      }
     }
     let matches = rawMatches.map(normalizeMatch);
     if (teamParam) {

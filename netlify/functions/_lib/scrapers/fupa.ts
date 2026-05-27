@@ -1,6 +1,7 @@
 import { LEAGUE_LABELS, svpTeamFromSlug } from "@shared/leagues.ts";
 import type { LeagueKey, Match, TeamId } from "@shared/types";
 import { fetchAllLeagueMatches } from "./fupa-league.ts";
+import { fupaFetchJSON, fupaFetchText } from "./fupa-client.ts";
 
 interface FupaTeamMatch {
   id: number;
@@ -29,25 +30,7 @@ interface FupaJsonLdGraph {
 }
 
 const CLUB_SLUG = "sv-petershausen";
-
-const USER_AGENT =
-  "Mozilla/5.0 (compatible; Mafianator/1.0; +https://github.com/sv-petershausen)";
-
-async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(`FuPa request failed (${res.status}): ${url}`);
-  return res.json() as Promise<T>;
-}
-
-async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
-  });
-  if (!res.ok) throw new Error(`FuPa HTML request failed (${res.status}): ${url}`);
-  return res.text();
-}
+const SEASON_SUFFIX = "2025-26";
 
 function leagueKeyForTeam(team: TeamId): LeagueKey {
   return team === 1 ? "kreisklasse" : "c-klasse";
@@ -118,7 +101,7 @@ function findUpcoming(graph: FupaJsonLdGraph): Match[] {
 }
 
 export async function fetchUpcomingMatches(): Promise<Match[]> {
-  const html = await fetchText(`https://www.fupa.net/club/${CLUB_SLUG}/matches`);
+  const html = await fupaFetchText(`https://www.fupa.net/club/${CLUB_SLUG}/matches`);
   const matches: Match[] = [];
   const ldRe =
     /<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/g;
@@ -136,11 +119,11 @@ export async function fetchUpcomingMatches(): Promise<Match[]> {
 }
 
 export async function fetchPastMatchesForTeam(team: TeamId): Promise<Match[]> {
-  const teamSlug = `${CLUB_SLUG}-m${team}-2025-26`;
+  const teamSlug = `${CLUB_SLUG}-m${team}-${SEASON_SUFFIX}`;
   const url = `https://api.fupa.net/v1/teams/${teamSlug}/matches?flavor=past`;
   const leagueKey = leagueKeyForTeam(team);
   try {
-    const data = await fetchJSON<FupaTeamMatch[]>(url);
+    const data = await fupaFetchJSON<FupaTeamMatch[]>(url);
     const out: Match[] = [];
     for (const m of data) {
       const homeIsUs = m.homeTeam.slug.startsWith(CLUB_SLUG);

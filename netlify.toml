@@ -25,6 +25,12 @@
   schedule = "@hourly"
   timeout = 60
 
+[functions."matches"]
+  timeout = 60
+
+[functions."scrape-trigger"]
+  timeout = 60
+
 [functions."auth-login"]
   timeout = 15
 

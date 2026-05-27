@@ -13,7 +13,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useMatches } from "@/api/matches";
+import { useMatches, useTriggerScrape } from "@/api/matches";
 import { useMyBets, useSubmitBet, useSubmitBetsBulk } from "@/api/bets";
 import { useToast } from "@/components/ui/toast";
 import { formatDate, formatTime } from "@/lib/format";
@@ -34,7 +34,8 @@ const LEAGUE_TABS: { key: LeagueKey; label: string; short: string }[] = [
 ];
 
 export function TippenPage() {
-  const { data: matches, isLoading } = useMatches();
+  const { data: matches, isLoading, isFetching, refetch } = useMatches();
+  const triggerScrape = useTriggerScrape();
   const { data: bets } = useMyBets();
   const [leagueKey, setLeagueKey] = useState<LeagueKey>("kreisklasse");
   const [roundIdx, setRoundIdx] = useState(0);
@@ -181,22 +182,32 @@ export function TippenPage() {
         </Button>
       )}
 
-      {isLoading && (
+      {(isLoading || isFetching) && !matches?.length && (
         <Card>
-          <CardContent className="p-5 text-center text-sm text-muted-foreground">
-            Spiele werden geladen…
+          <CardContent className="p-5 text-center text-sm text-muted-foreground space-y-2">
+            <p>Spiele werden von FuPa geladen…</p>
+            <p className="text-xs">Beim ersten Mal kann das bis zu einer Minute dauern.</p>
           </CardContent>
         </Card>
       )}
 
-      {!isLoading && rounds.length === 0 && (
+      {!isLoading && !isFetching && rounds.length === 0 && (
         <Card>
-          <CardContent className="p-5 text-center text-sm text-muted-foreground space-y-2">
+          <CardContent className="p-5 text-center text-sm text-muted-foreground space-y-3">
             <p>Noch keine Ligaspiele für {LEAGUE_LABELS[leagueKey]}.</p>
-            <p className="text-xs">
-              Beim ersten Login werden Daten von FuPa geladen. Seite neu laden oder Admin →
-              Spiele → „Jetzt scrapen“.
-            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                loading={triggerScrape.isPending}
+                onClick={() => triggerScrape.mutate()}
+              >
+                Spiele von FuPa laden
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => refetch()}>
+                Erneut versuchen
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}

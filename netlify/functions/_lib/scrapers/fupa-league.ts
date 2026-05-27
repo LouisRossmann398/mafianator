@@ -8,6 +8,7 @@ import {
   svpTeamFromSlug,
 } from "@shared/leagues.ts";
 import type { LeagueKey, Match, TeamId } from "@shared/types";
+import { fupaFetchJSON, mapPool } from "./fupa-client.ts";
 
 interface FupaTeamMatch {
   id: number;
@@ -22,65 +23,24 @@ interface FupaTeamMatch {
   venue?: { name?: string };
 }
 
-const USER_AGENT =
-  "Mozilla/5.0 (compatible; Mafianator/1.0; +https://github.com/sv-petershausen)";
-
-async function fetchJSON<T>(url: string): Promise<T> {
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
-  });
-  if (!res.ok) throw new Error(`FuPa request failed (${res.status}): ${url}`);
-  return res.json() as Promise<T>;
-}
-
 function isCompetitionMatch(m: FupaTeamMatch, competitionSlug: string): boolean {
   return m.competition?.slug === competitionSlug;
 }
 
-/** Alle Team-Slugs einer Staffel über FuPa-API ermitteln (BFS ab SVP + Competition-Matches). */
+/** Team-Slugs der Staffel aus dem Wettbewerbs-Endpunkt (keine Hardcoded-Liste). */
 export async function discoverTeamSlugs(leagueKey: LeagueKey): Promise<string[]> {
   const competitionSlug = COMPETITION_SLUGS[leagueKey];
-  const discovered = new Set<string>();
-  const queue: string[] = [];
+  const slugs = new Set<string>([svpSeedSlugForLeague(leagueKey)]);
 
-  const addSlug = (slug: string) => {
-    if (!discovered.has(slug)) {
-      discovered.add(slug);
-      queue.push(slug);
-    }
-  };
-
-  addSlug(svpSeedSlugForLeague(leagueKey));
-
-  try {
-    const compUrl = `https://api.fupa.net/v1/competitions/${competitionSlug}/seasons/${SEASON_SUFFIX}/matches?flavor=past`;
-    const compMatches = await fetchJSON<FupaTeamMatch[]>(compUrl);
-    for (const m of compMatches) {
-      if (!isCompetitionMatch(m, competitionSlug)) continue;
-      addSlug(m.homeTeam.slug);
-      addSlug(m.awayTeam.slug);
-    }
-  } catch (e) {
-    console.warn("[scraper] competition matches bootstrap failed", competitionSlug, e);
+  const compUrl = `https://api.fupa.net/v1/competitions/${competitionSlug}/seasons/${SEASON_SUFFIX}/matches?flavor=past`;
+  const compMatches = await fupaFetchJSON<FupaTeamMatch[]>(compUrl);
+  for (const m of compMatches) {
+    if (!isCompetitionMatch(m, competitionSlug)) continue;
+    slugs.add(m.homeTeam.slug);
+    slugs.add(m.awayTeam.slug);
   }
 
-  while (queue.length > 0) {
-    const teamSlug = queue.shift()!;
-    const url = `https://api.fupa.net/v1/teams/${teamSlug}/matches?flavor=past`;
-    try {
-      const data = await fetchJSON<FupaTeamMatch[]>(url);
-      for (const m of data) {
-        if (!isCompetitionMatch(m, competitionSlug)) continue;
-        for (const slug of [m.homeTeam.slug, m.awayTeam.slug]) {
-          addSlug(slug);
-        }
-      }
-    } catch (e) {
-      console.error("[scraper] team discovery fetch failed", teamSlug, e);
-    }
-  }
-
-  return [...discovered];
+  return [...slugs];
 }
 
 function fupaMatchToLeagueMatch(
@@ -131,13 +91,13 @@ function fupaMatchToLeagueMatch(
 
 export async function fetchLeagueMatches(leagueKey: LeagueKey): Promise<Match[]> {
   const competitionSlug = COMPETITION_SLUGS[leagueKey];
-  const slugs = await discoverTeamSlugs(leagueKey);
+  const teamSlugs = await discoverTeamSlugs(leagueKey);
   const byId = new Map<string, Match>();
 
-  for (const teamSlug of slugs) {
+  await mapPool(teamSlugs, 8, async (teamSlug) => {
     const url = `https://api.fupa.net/v1/teams/${teamSlug}/matches?flavor=past`;
     try {
-      const data = await fetchJSON<FupaTeamMatch[]>(url);
+      const data = await fupaFetchJSON<FupaTeamMatch[]>(url);
       for (const m of data) {
         const conv = fupaMatchToLeagueMatch(m, leagueKey, competitionSlug);
         if (!conv) continue;
@@ -151,7 +111,7 @@ export async function fetchLeagueMatches(leagueKey: LeagueKey): Promise<Match[]>
     } catch (e) {
       console.error("[scraper] league team fetch failed", teamSlug, e);
     }
-  }
+  });
 
   return [...byId.values()];
 }
