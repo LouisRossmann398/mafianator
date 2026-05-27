@@ -2,13 +2,23 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiFetch } from "./client";
 import type { Match, TeamId } from "@shared/types";
 
+export interface ScrapeStatusInfo {
+  lastRun?: string;
+  lastError?: string;
+  matchesTotal?: number;
+}
+
 export function useMatches(team?: TeamId) {
   return useQuery({
     queryKey: ["matches", team ?? "all"],
     queryFn: () => {
       const qs = team ? `?team=${team}` : "";
-      return apiFetch<{ matches: Match[] }>(`/matches${qs}`).then((d) => d.matches);
+      return apiFetch<{ matches: Match[]; scrapeStatus?: ScrapeStatusInfo }>(`/matches${qs}`);
     },
+    select: (d) => ({
+      matches: d.matches,
+      scrapeStatus: d.scrapeStatus,
+    }),
     retry: 1,
     staleTime: 60_000,
   });

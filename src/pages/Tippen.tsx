@@ -34,7 +34,9 @@ const LEAGUE_TABS: { key: LeagueKey; label: string; short: string }[] = [
 ];
 
 export function TippenPage() {
-  const { data: matches, isLoading, isFetching, refetch } = useMatches();
+  const { data, isLoading, isFetching, refetch } = useMatches();
+  const matches = data?.matches;
+  const scrapeStatus = data?.scrapeStatus;
   const triggerScrape = useTriggerScrape();
   const { data: bets } = useMyBets();
   const [leagueKey, setLeagueKey] = useState<LeagueKey>("kreisklasse");
@@ -195,6 +197,15 @@ export function TippenPage() {
         <Card>
           <CardContent className="p-5 text-center text-sm text-muted-foreground space-y-3">
             <p>Noch keine Ligaspiele für {LEAGUE_LABELS[leagueKey]}.</p>
+            {scrapeStatus?.lastError && (
+              <p className="text-xs text-destructive/90">FuPa: {scrapeStatus.lastError}</p>
+            )}
+            {!matches?.length && (
+              <p className="text-xs">
+                Saison 2025/26 · Spieltag 26 (Wochenende) steht bei FuPa oft nur auf der
+                Vereinsseite – nach „Laden“ kurz warten und Seite neu laden.
+              </p>
+            )}
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"

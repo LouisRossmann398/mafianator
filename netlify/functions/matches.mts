@@ -44,7 +44,12 @@ export default async (req: Request): Promise<Response> => {
     } else {
       matches.sort((a, b) => b.kickoff.localeCompare(a.kickoff));
     }
-    return json({ matches });
+    const scrapeStatus = (await stores$.meta().get("scrape-status")) as {
+      lastError?: string;
+      matchesTotal?: number;
+      lastRun?: string;
+    } | null;
+    return json({ matches, scrapeStatus: scrapeStatus ?? undefined });
   }
 
   if (req.method === "POST") {

@@ -30,7 +30,8 @@ interface ScrapeStatus {
 export function AdminMatches() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const { data: matches } = useMatches();
+  const { data } = useMatches();
+  const matches = data?.matches;
   const trigger = useTriggerScrape();
   const remove = useDeleteMatch();
   const update = useUpdateMatch();

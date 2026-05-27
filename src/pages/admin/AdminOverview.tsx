@@ -9,7 +9,8 @@ import { formatEuro } from "@/lib/format";
 export function AdminOverview() {
   const { data: balances } = useBalances();
   const { data: penalties } = usePenalties();
-  const { data: matches } = useMatches();
+  const { data } = useMatches();
+  const matches = data?.matches;
   const { data: users } = useUsers();
 
   const open = (penalties ?? []).filter((p) => p.status === "open").length;

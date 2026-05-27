@@ -2,6 +2,7 @@ import { LEAGUE_LABELS, svpTeamFromSlug } from "@shared/leagues.ts";
 import type { LeagueKey, Match, TeamId } from "@shared/types";
 import { fetchAllLeagueMatches } from "./fupa-league.ts";
 import { fupaFetchJSON, fupaFetchText } from "./fupa-client.ts";
+import { getFupaSeasonSlug } from "./fupa-season.ts";
 
 interface FupaTeamMatch {
   id: number;
@@ -30,7 +31,6 @@ interface FupaJsonLdGraph {
 }
 
 const CLUB_SLUG = "sv-petershausen";
-const SEASON_SUFFIX = "2025-26";
 
 function leagueKeyForTeam(team: TeamId): LeagueKey {
   return team === 1 ? "kreisklasse" : "c-klasse";
@@ -58,10 +58,12 @@ function findUpcoming(graph: FupaJsonLdGraph): Match[] {
     }
   }
 
+  const now = Date.now();
   const out: Match[] = [];
   for (const node of graph["@graph"]) {
     if (node["@type"] !== "SportsEvent") continue;
     if (!node.startDate || !node["@id"]) continue;
+    if (new Date(node.startDate).getTime() <= now - 2 * 60 * 60_000) continue;
     const homeId = node.homeTeam?.["@id"];
     const awayId = node.awayTeam?.["@id"];
     if (!homeId || !awayId) continue;
@@ -119,7 +121,8 @@ export async function fetchUpcomingMatches(): Promise<Match[]> {
 }
 
 export async function fetchPastMatchesForTeam(team: TeamId): Promise<Match[]> {
-  const teamSlug = `${CLUB_SLUG}-m${team}-${SEASON_SUFFIX}`;
+  const season = await getFupaSeasonSlug();
+  const teamSlug = `${CLUB_SLUG}-m${team}-${season}`;
   const url = `https://api.fupa.net/v1/teams/${teamSlug}/matches?flavor=past`;
   const leagueKey = leagueKeyForTeam(team);
   try {
@@ -157,7 +160,29 @@ export async function fetchPastMatchesForTeam(team: TeamId): Promise<Match[]> {
   }
 }
 
+/** Kommende Spiele ohne Spieltag → nächster Spieltag (max + 1). */
+function assignRoundsToUpcoming(matches: Match[]): Match[] {
+  const maxRound = new Map<LeagueKey, number>();
+  for (const m of matches) {
+    if (m.round != null && m.round > 0) {
+      maxRound.set(m.leagueKey, Math.max(maxRound.get(m.leagueKey) ?? 0, m.round));
+    }
+  }
+
+  const now = Date.now();
+  return matches.map((m) => {
+    if (m.round != null && m.round > 0) return m;
+    const isFuture = new Date(m.kickoff).getTime() > now - 2 * 60 * 60_000;
+    if (!isFuture && m.result) return m;
+    const nextRound = (maxRound.get(m.leagueKey) ?? 0) + 1;
+    return { ...m, round: nextRound };
+  });
+}
+
 export async function fetchAllMatches(): Promise<Match[]> {
+  const season = await getFupaSeasonSlug();
+  console.info("[scraper] FuPa season", season);
+
   const [league, upcoming] = await Promise.all([
     fetchAllLeagueMatches(),
     fetchUpcomingMatches().catch((e) => {
@@ -183,5 +208,8 @@ export async function fetchAllMatches(): Promise<Match[]> {
     };
     byId.set(m.id, merged);
   }
-  return [...byId.values()];
+
+  const withRounds = assignRoundsToUpcoming([...byId.values()]);
+  console.info("[scraper] total matches", withRounds.length, "upcoming", upcoming.length);
+  return withRounds;
 }
