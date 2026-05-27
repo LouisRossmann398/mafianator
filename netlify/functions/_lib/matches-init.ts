@@ -1,11 +1,10 @@
-import { stores$ } from "./blobs.ts";
+import { matchesCount } from "./match-store.ts";
 import { runScrape } from "../scrape-matches.mts";
 
 let populatePromise: Promise<void> | null = null;
 
 export async function ensureMatchesPopulated(): Promise<void> {
-  const existing = await stores$.matches().list();
-  if (existing.length > 0) return;
+  if ((await matchesCount()) > 0) return;
 
   if (!populatePromise) {
     populatePromise = populateMatches().finally(() => {

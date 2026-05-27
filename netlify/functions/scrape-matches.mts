@@ -1,5 +1,6 @@
 import type { Config } from "@netlify/functions";
 import { stores$ } from "./_lib/blobs.ts";
+import { saveAllMatches, loadAllMatches } from "./_lib/match-store.ts";
 import { fetchAllMatches } from "./_lib/scrapers/fupa.ts";
 import type { Match } from "@shared/types";
 
@@ -9,41 +10,64 @@ interface ScrapeStatus {
   matchesTotal: number;
   matchesUpdated: number;
   matchesCreated: number;
+  durationMs?: number;
 }
 
 export async function runScrape(): Promise<ScrapeStatus> {
+  const started = Date.now();
   const fetched = await fetchAllMatches();
-  let updated = 0;
+  console.info("[scrape] fetched", fetched.length, "matches from FuPa");
+
+  if (fetched.length === 0) {
+    const status: ScrapeStatus = {
+      lastRun: new Date().toISOString(),
+      matchesTotal: 0,
+      matchesUpdated: 0,
+      matchesCreated: 0,
+      durationMs: Date.now() - started,
+      lastError: "FuPa lieferte 0 Spiele – API evtl. blockiert oder Saison leer",
+    };
+    await stores$.meta().set("scrape-status", status as never);
+    return status;
+  }
+
+  const existing = await loadAllMatches();
+  const byId = new Map(existing.map((m) => [m.id, m]));
   let created = 0;
-  const store = stores$.matches();
+  let updated = 0;
+
   for (const m of fetched) {
-    const existing = await store.get(m.id);
-    if (!existing) {
-      await store.set(m.id, m);
+    const prev = byId.get(m.id);
+    if (!prev) {
+      byId.set(m.id, m);
       created += 1;
       continue;
     }
-    if (existing.source === "manual" && existing.result) {
-      continue;
-    }
+    if (prev.source === "manual" && prev.result) continue;
     const merged: Match = {
-      ...existing,
+      ...prev,
       ...m,
-      result: m.result ?? existing.result,
+      result: m.result ?? prev.result,
       updatedAt: new Date().toISOString(),
     };
-    if (JSON.stringify(existing) !== JSON.stringify(merged)) {
-      await store.set(m.id, merged);
+    if (JSON.stringify(prev) !== JSON.stringify(merged)) {
+      byId.set(m.id, merged);
       updated += 1;
     }
   }
+
+  const merged = [...byId.values()];
+  await saveAllMatches(merged);
+
   const status: ScrapeStatus = {
     lastRun: new Date().toISOString(),
-    matchesTotal: fetched.length,
+    matchesTotal: merged.length,
     matchesUpdated: updated,
     matchesCreated: created,
+    durationMs: Date.now() - started,
   };
   await stores$.meta().set("scrape-status", status as never);
+  console.info("[scrape] saved", status);
   return status;
 }
 

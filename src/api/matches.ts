@@ -6,6 +6,7 @@ export interface ScrapeStatusInfo {
   lastRun?: string;
   lastError?: string;
   matchesTotal?: number;
+  durationMs?: number;
 }
 
 export function useMatches(team?: TeamId) {

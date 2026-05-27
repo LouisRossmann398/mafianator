@@ -251,6 +251,11 @@ export function TippenPage() {
             {scrapeStatus?.lastError && (
               <p className="text-xs text-destructive/90">FuPa: {scrapeStatus.lastError}</p>
             )}
+            {scrapeStatus?.matchesTotal != null && scrapeStatus.matchesTotal > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Zuletzt {scrapeStatus.matchesTotal} Spiele in der Datenbank gespeichert.
+              </p>
+            )}
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"

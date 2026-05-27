@@ -1,5 +1,6 @@
 import { stores$ } from "./_lib/blobs.ts";
 import { requireAuth } from "./_lib/auth.ts";
+import { getMatchById } from "./_lib/match-store.ts";
 import { error, json, notAllowed } from "./_lib/response.ts";
 import { normalizeMatch } from "@shared/leagues.ts";
 import type { Bet, Match } from "@shared/types";
@@ -66,7 +67,7 @@ export default async (req: Request): Promise<Response> => {
     const key = betKey(auth.user.username, matchId);
     const existing = await stores$.bets().get(key);
     if (!existing) return json({ ok: true });
-    const match = (await stores$.matches().get(matchId)) as Match | null;
+    const match = await getMatchById(matchId);
     if (match && new Date(match.kickoff).getTime() <= Date.now()) {
       return error(400, "Anpfiff vorbei, Tipp nicht mehr loeschbar");
     }
@@ -95,7 +96,7 @@ async function saveBet(
   if (payload.homeGoals < 0 || payload.awayGoals < 0) {
     return { message: "Negative Tore nicht erlaubt" };
   }
-  const raw = (await stores$.matches().get(payload.matchId)) as Match | null;
+  const raw = await getMatchById(payload.matchId);
   if (!raw) return { message: "Spiel nicht gefunden" };
   const match = normalizeMatch(raw);
   if (!match.tippable || match.involvesSvp) {

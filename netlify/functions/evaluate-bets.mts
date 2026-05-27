@@ -1,15 +1,13 @@
 import type { Config } from "@netlify/functions";
 import { stores$ } from "./_lib/blobs.ts";
+import { loadAllMatches } from "./_lib/match-store.ts";
 import { calcPoints } from "./_lib/scoring.ts";
 
 export async function runEvaluation(): Promise<{
   evaluated: number;
   reEvaluated: number;
 }> {
-  const [matches, bets] = await Promise.all([
-    stores$.matches().all(),
-    stores$.bets().all(),
-  ]);
+  const [matches, bets] = await Promise.all([loadAllMatches(), stores$.bets().all()]);
   const matchById = new Map(matches.map((m) => [m.id, m]));
   let evaluated = 0;
   let reEvaluated = 0;

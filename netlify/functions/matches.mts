@@ -1,6 +1,12 @@
 import { stores$ } from "./_lib/blobs.ts";
 import { requireAuth } from "./_lib/auth.ts";
 import { ensureMatchesPopulated } from "./_lib/matches-init.ts";
+import {
+  deleteMatchById,
+  getMatchById,
+  loadAllMatches,
+  upsertMatch,
+} from "./_lib/match-store.ts";
 import { error, json, notAllowed } from "./_lib/response.ts";
 import { newId } from "./_lib/ids.ts";
 import { normalizeMatch } from "@shared/leagues.ts";
@@ -17,11 +23,11 @@ export default async (req: Request): Promise<Response> => {
   if (req.method === "GET") {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
-    let rawMatches = await stores$.matches().all();
+    let rawMatches = await loadAllMatches();
     if (rawMatches.length === 0) {
       try {
         await ensureMatchesPopulated();
-        rawMatches = await stores$.matches().all();
+        rawMatches = await loadAllMatches();
       } catch (e) {
         console.error("[matches] populate failed", e);
       }
@@ -96,7 +102,7 @@ export default async (req: Request): Promise<Response> => {
       source: "manual",
       updatedAt: new Date().toISOString(),
     });
-    await stores$.matches().set(match.id, match);
+    await upsertMatch(match);
     return json({ match }, 201);
   }
 
@@ -110,7 +116,7 @@ export default async (req: Request): Promise<Response> => {
     } catch {
       return error(400, "Ungueltiges JSON");
     }
-    const existing = await stores$.matches().get(id);
+    const existing = await getMatchById(id);
     if (!existing) return error(404, "Match nicht gefunden");
     const payload = body as Partial<Match>;
     const updated: Match = {
@@ -119,7 +125,7 @@ export default async (req: Request): Promise<Response> => {
       id: existing.id,
       updatedAt: new Date().toISOString(),
     };
-    await stores$.matches().set(id, updated);
+    await upsertMatch(updated);
     return json({ match: updated });
   }
 
@@ -127,7 +133,7 @@ export default async (req: Request): Promise<Response> => {
     const auth = await requireAuth(req, ["admin"]);
     if (!auth.ok) return auth.response;
     if (!id) return error(400, "id fehlt");
-    await stores$.matches().delete(id);
+    await deleteMatchById(id);
     return json({ ok: true });
   }
 

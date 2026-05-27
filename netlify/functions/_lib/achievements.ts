@@ -1,5 +1,6 @@
 import { stores$ } from "./blobs.ts";
 import { computeBalanceFor } from "./balance.ts";
+import { loadAllMatches } from "./match-store.ts";
 import type { Achievement, AchievementsRecord, Bet } from "@shared/types";
 
 export interface ComputedBadges {
@@ -13,7 +14,7 @@ export async function computeBadges(playerId: string, userId: string): Promise<C
     stores$.goodDeeds().all().then((all) => all.filter((g) => g.playerId === playerId)),
     stores$.bets().all().then((all) => all.filter((b) => b.userId === userId)),
     computeBalanceFor(playerId),
-    stores$.matches().all(),
+    loadAllMatches(),
   ]);
 
   const unlocked = new Set<string>();
