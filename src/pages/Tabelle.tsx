@@ -16,7 +16,9 @@ export function TabellePage() {
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-sm text-muted-foreground">Saison-Wettbewerb</div>
+        <div className="text-sm text-muted-foreground">
+          Kreisklasse + C-Klasse zusammen
+        </div>
         <h1 className="text-2xl font-bold">Tipp-Tabelle</h1>
       </div>
 

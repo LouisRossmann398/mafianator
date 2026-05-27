@@ -1,4 +1,6 @@
-import type { Match, TeamId } from "@shared/types";
+import { LEAGUE_LABELS, svpTeamFromSlug } from "@shared/leagues.ts";
+import type { LeagueKey, Match, TeamId } from "@shared/types";
+import { fetchAllLeagueMatches } from "./fupa-league.ts";
 
 interface FupaTeamMatch {
   id: number;
@@ -9,7 +11,7 @@ interface FupaTeamMatch {
   homeGoal: number | null;
   awayGoal: number | null;
   competition?: { name?: string };
-  round?: { competitionSeason?: { name?: string } };
+  round?: { number?: number; competitionSeason?: { name?: string } };
 }
 
 interface FupaJsonLdEvent {
@@ -23,86 +25,32 @@ interface FupaJsonLdEvent {
 }
 
 interface FupaJsonLdGraph {
-  "@graph": (FupaJsonLdEvent & {
-    name?: string;
-  })[];
+  "@graph": (FupaJsonLdEvent & { name?: string })[];
 }
 
 const CLUB_SLUG = "sv-petershausen";
-const SEASON_SUFFIX = "2025-26";
 
 const USER_AGENT =
   "Mozilla/5.0 (compatible; Mafianator/1.0; +https://github.com/sv-petershausen)";
 
 async function fetchJSON<T>(url: string): Promise<T> {
   const res = await fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "application/json",
-    },
+    headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
   });
-  if (!res.ok) {
-    throw new Error(`FuPa request failed (${res.status}): ${url}`);
-  }
+  if (!res.ok) throw new Error(`FuPa request failed (${res.status}): ${url}`);
   return res.json() as Promise<T>;
 }
 
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, {
-    headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "text/html",
-    },
+    headers: { "User-Agent": USER_AGENT, Accept: "text/html" },
   });
   if (!res.ok) throw new Error(`FuPa HTML request failed (${res.status}): ${url}`);
   return res.text();
 }
 
-function teamFromSlug(slug: string): TeamId | null {
-  if (slug.includes(`${CLUB_SLUG}-m1`)) return 1;
-  if (slug.includes(`${CLUB_SLUG}-m2`)) return 2;
-  return null;
-}
-
-function leagueFor(team: TeamId, fallback?: string): string {
-  if (fallback) return fallback;
-  return team === 1 ? "Kreisklasse 1 München" : "C-Klasse 1 München";
-}
-
-function pastMatchToMatch(m: FupaTeamMatch): Match | null {
-  const homeIsUs = m.homeTeam.slug.startsWith(CLUB_SLUG);
-  const awayIsUs = m.awayTeam.slug.startsWith(CLUB_SLUG);
-  if (!homeIsUs && !awayIsUs) return null;
-  const ourSlug = homeIsUs ? m.homeTeam.slug : m.awayTeam.slug;
-  const team = teamFromSlug(ourSlug);
-  if (!team) return null;
-  const opponent = homeIsUs ? m.awayTeam.name.full : m.homeTeam.name.full;
-  const result =
-    typeof m.homeGoal === "number" && typeof m.awayGoal === "number"
-      ? {
-          homeGoals: homeIsUs ? m.homeGoal : m.homeGoal,
-          awayGoals: m.awayGoal,
-        }
-      : undefined;
-  const finalResult = result
-    ? {
-        homeGoals: homeIsUs ? m.homeGoal! : m.awayGoal!,
-        awayGoals: homeIsUs ? m.awayGoal! : m.homeGoal!,
-      }
-    : undefined;
-
-  return {
-    id: `fupa-${m.slug}`,
-    team,
-    opponent,
-    homeAway: homeIsUs ? "home" : "away",
-    kickoff: m.kickoff,
-    league: leagueFor(team, m.competition?.name ?? m.round?.competitionSeason?.name),
-    result: finalResult ?? undefined,
-    source: "fupa",
-    scrapedAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  };
+function leagueKeyForTeam(team: TeamId): LeagueKey {
+  return team === 1 ? "kreisklasse" : "c-klasse";
 }
 
 interface UpcomingTeamInfo {
@@ -141,18 +89,25 @@ function findUpcoming(graph: FupaJsonLdGraph): Match[] {
     const awayIsUs = away.slug.startsWith(CLUB_SLUG);
     if (!homeIsUs && !awayIsUs) continue;
     const ourSlug = homeIsUs ? home.slug : away.slug;
-    const team = teamFromSlug(ourSlug);
+    const team = svpTeamFromSlug(ourSlug);
     if (!team) continue;
-    const opponent = homeIsUs ? away.name : home.name;
-    const compName = node.superEvent?.["@id"] ? competitions.get(node.superEvent["@id"]) : undefined;
+    const leagueKey = leagueKeyForTeam(team);
+    const compName = node.superEvent?.["@id"]
+      ? competitions.get(node.superEvent["@id"])
+      : undefined;
     const slug = node["@id"].replace(/^https?:\/\/[^/]+\/match\//, "");
     out.push({
       id: `fupa-${slug}`,
+      leagueKey,
+      homeTeamName: home.name,
+      awayTeamName: away.name,
+      involvesSvp: true,
+      tippable: false,
       team,
-      opponent,
+      opponent: homeIsUs ? away.name : home.name,
       homeAway: homeIsUs ? "home" : "away",
       kickoff: node.startDate,
-      league: leagueFor(team, compName),
+      league: compName ?? LEAGUE_LABELS[leagueKey],
       location: node.location?.name,
       source: "fupa",
       scrapedAt: new Date().toISOString(),
@@ -181,14 +136,36 @@ export async function fetchUpcomingMatches(): Promise<Match[]> {
 }
 
 export async function fetchPastMatchesForTeam(team: TeamId): Promise<Match[]> {
-  const teamSlug = `${CLUB_SLUG}-m${team}-${SEASON_SUFFIX}`;
+  const teamSlug = `${CLUB_SLUG}-m${team}-2025-26`;
   const url = `https://api.fupa.net/v1/teams/${teamSlug}/matches?flavor=past`;
+  const leagueKey = leagueKeyForTeam(team);
   try {
     const data = await fetchJSON<FupaTeamMatch[]>(url);
     const out: Match[] = [];
     for (const m of data) {
-      const conv = pastMatchToMatch(m);
-      if (conv) out.push(conv);
+      const homeIsUs = m.homeTeam.slug.startsWith(CLUB_SLUG);
+      const awayIsUs = m.awayTeam.slug.startsWith(CLUB_SLUG);
+      if (!homeIsUs && !awayIsUs) continue;
+      const hasResult =
+        typeof m.homeGoal === "number" && typeof m.awayGoal === "number";
+      out.push({
+        id: `fupa-${m.slug}`,
+        leagueKey,
+        round: m.round?.number,
+        homeTeamName: m.homeTeam.name.full,
+        awayTeamName: m.awayTeam.name.full,
+        involvesSvp: true,
+        tippable: false,
+        team,
+        opponent: homeIsUs ? m.awayTeam.name.full : m.homeTeam.name.full,
+        homeAway: homeIsUs ? "home" : "away",
+        kickoff: m.kickoff,
+        league: m.competition?.name ?? m.round?.competitionSeason?.name ?? LEAGUE_LABELS[leagueKey],
+        result: hasResult ? { homeGoals: m.homeGoal!, awayGoals: m.awayGoal! } : undefined,
+        source: "fupa",
+        scrapedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
     }
     return out;
   } catch (e) {
@@ -198,22 +175,30 @@ export async function fetchPastMatchesForTeam(team: TeamId): Promise<Match[]> {
 }
 
 export async function fetchAllMatches(): Promise<Match[]> {
-  const [past1, past2, upcoming] = await Promise.all([
-    fetchPastMatchesForTeam(1),
-    fetchPastMatchesForTeam(2),
+  const [league, upcoming] = await Promise.all([
+    fetchAllLeagueMatches(),
     fetchUpcomingMatches().catch((e) => {
       console.error("[scraper] upcoming failed", e);
       return [] as Match[];
     }),
   ]);
+
   const byId = new Map<string, Match>();
-  for (const m of [...past1, ...past2, ...upcoming]) {
+  for (const m of [...league, ...upcoming]) {
     const existing = byId.get(m.id);
     if (!existing) {
       byId.set(m.id, m);
-    } else if (!existing.result && m.result) {
-      byId.set(m.id, { ...existing, ...m });
+      continue;
     }
+    const merged: Match = {
+      ...existing,
+      ...m,
+      result: m.result ?? existing.result,
+      round: m.round ?? existing.round,
+      kickoff: m.kickoff || existing.kickoff,
+      updatedAt: new Date().toISOString(),
+    };
+    byId.set(m.id, merged);
   }
   return [...byId.values()];
 }

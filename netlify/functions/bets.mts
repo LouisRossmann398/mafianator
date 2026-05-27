@@ -1,6 +1,7 @@
 import { stores$ } from "./_lib/blobs.ts";
 import { requireAuth } from "./_lib/auth.ts";
 import { error, json, notAllowed } from "./_lib/response.ts";
+import { normalizeMatch } from "@shared/leagues.ts";
 import type { Bet, Match } from "@shared/types";
 
 function betKey(userId: string, matchId: string): string {
@@ -34,34 +35,24 @@ export default async (req: Request): Promise<Response> => {
     } catch {
       return error(400, "Ungueltiges JSON");
     }
+
+    const bulk = body as { bets?: Array<Partial<Bet>> };
+    if (Array.isArray(bulk.bets)) {
+      const saved: Bet[] = [];
+      const errors: string[] = [];
+      for (const item of bulk.bets) {
+        const result = await saveBet(auth.user.username, item);
+        if ("bet" in result) saved.push(result.bet);
+        else if ("message" in result) errors.push(result.message);
+      }
+      return json({ bets: saved, errors });
+    }
+
     const payload = body as Partial<Bet>;
-    if (
-      !payload.matchId ||
-      typeof payload.homeGoals !== "number" ||
-      typeof payload.awayGoals !== "number"
-    ) {
-      return error(400, "matchId, homeGoals, awayGoals sind Pflicht");
-    }
-    if (payload.homeGoals < 0 || payload.awayGoals < 0) return error(400, "Negative Tore? Nope.");
-    const match = (await stores$.matches().get(payload.matchId)) as Match | null;
-    if (!match) return error(404, "Spiel nicht gefunden");
-    if (new Date(match.kickoff).getTime() <= Date.now()) {
-      return error(400, "Anpfiff bereits erreicht, Tipp nicht mehr moeglich");
-    }
-    const key = betKey(auth.user.username, payload.matchId);
-    const existing = await stores$.bets().get(key);
-    const bet: Bet = {
-      id: key,
-      userId: auth.user.username,
-      matchId: payload.matchId,
-      homeGoals: Math.floor(payload.homeGoals),
-      awayGoals: Math.floor(payload.awayGoals),
-      submittedAt: new Date().toISOString(),
-      points: existing?.points,
-      evaluatedAt: existing?.evaluatedAt,
-    };
-    await stores$.bets().set(key, bet);
-    return json({ bet });
+    const result = await saveBet(auth.user.username, payload);
+    if ("error" in result) return result.error;
+    if (!("bet" in result)) return error(400, result.message);
+    return json({ bet: result.bet });
   }
 
   if (req.method === "DELETE") {
@@ -85,4 +76,43 @@ export default async (req: Request): Promise<Response> => {
 export const config = {
   path: "/api/bets",
 };
+
+async function saveBet(
+  userId: string,
+  payload: Partial<Bet>,
+): Promise<{ bet: Bet } | { error: Response } | { message: string }> {
+  if (
+    !payload.matchId ||
+    typeof payload.homeGoals !== "number" ||
+    typeof payload.awayGoals !== "number"
+  ) {
+    return { message: "matchId, homeGoals, awayGoals sind Pflicht" };
+  }
+  if (payload.homeGoals < 0 || payload.awayGoals < 0) {
+    return { message: "Negative Tore nicht erlaubt" };
+  }
+  const raw = (await stores$.matches().get(payload.matchId)) as Match | null;
+  if (!raw) return { message: "Spiel nicht gefunden" };
+  const match = normalizeMatch(raw);
+  if (!match.tippable || match.involvesSvp) {
+    return { message: "Auf SVP-Spiele kann nicht getippt werden" };
+  }
+  if (new Date(match.kickoff).getTime() <= Date.now()) {
+    return { message: "Anpfiff bereits erreicht" };
+  }
+  const key = betKey(userId, payload.matchId);
+  const existing = await stores$.bets().get(key);
+  const bet: Bet = {
+    id: key,
+    userId,
+    matchId: payload.matchId,
+    homeGoals: Math.floor(payload.homeGoals),
+    awayGoals: Math.floor(payload.awayGoals),
+    submittedAt: new Date().toISOString(),
+    points: existing?.points,
+    evaluatedAt: existing?.evaluatedAt,
+  };
+  await stores$.bets().set(key, bet);
+  return { bet };
+}
 

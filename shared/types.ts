@@ -12,6 +12,8 @@ export type UserPublic = Omit<UserRecord, "passwordHash">;
 
 export type TeamId = 1 | 2;
 
+export type LeagueKey = "kreisklasse" | "c-klasse";
+
 export interface Player {
   id: string;
   name: string;
@@ -64,9 +66,12 @@ export interface CatalogEntry {
 
 export interface Match {
   id: string;
-  team: TeamId;
-  opponent: string;
-  homeAway: "home" | "away";
+  leagueKey: LeagueKey;
+  round?: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  involvesSvp: boolean;
+  tippable: boolean;
   kickoff: string;
   location?: string;
   league: string;
@@ -77,6 +82,10 @@ export interface Match {
   source: "fupa" | "manual" | "bfv";
   scrapedAt?: string;
   updatedAt: string;
+  /** Kalender / SVP-Spiele (optional bei reinen Liga-Spielen) */
+  team?: TeamId;
+  opponent?: string;
+  homeAway?: "home" | "away";
 }
 
 export interface Bet {

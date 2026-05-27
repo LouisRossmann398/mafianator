@@ -44,6 +44,21 @@ export function useSubmitBet() {
   });
 }
 
+export function useSubmitBetsBulk() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (bets: { matchId: string; homeGoals: number; awayGoals: number }[]) =>
+      apiFetch<{ bets: Bet[]; errors?: string[] }>("/bets", {
+        method: "POST",
+        json: { bets },
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["bets"] });
+      qc.invalidateQueries({ queryKey: ["leaderboard"] });
+    },
+  });
+}
+
 export function useDeleteBet() {
   const qc = useQueryClient();
   return useMutation({

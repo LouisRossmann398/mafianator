@@ -12,11 +12,19 @@ export function useMatches(team?: TeamId) {
   });
 }
 
+export function useSvpMatches() {
+  return useQuery({
+    queryKey: ["matches", "svp"],
+    queryFn: () =>
+      apiFetch<{ matches: Match[] }>("/matches?svpOnly=1").then((d) => d.matches),
+  });
+}
+
 export function useUpcomingMatches() {
   return useQuery({
-    queryKey: ["matches", "upcoming"],
+    queryKey: ["matches", "upcoming", "svp"],
     queryFn: () =>
-      apiFetch<{ matches: Match[] }>(`/matches?upcoming=1`).then((d) => d.matches),
+      apiFetch<{ matches: Match[] }>(`/matches?upcoming=1&svpOnly=1`).then((d) => d.matches),
   });
 }
 

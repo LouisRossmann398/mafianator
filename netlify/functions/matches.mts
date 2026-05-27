@@ -2,21 +2,30 @@ import { stores$ } from "./_lib/blobs.ts";
 import { requireAuth } from "./_lib/auth.ts";
 import { error, json, notAllowed } from "./_lib/response.ts";
 import { newId } from "./_lib/ids.ts";
-import type { Match, TeamId } from "@shared/types";
+import { normalizeMatch } from "@shared/leagues.ts";
+import type { LeagueKey, Match, TeamId } from "@shared/types";
 
 export default async (req: Request): Promise<Response> => {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
   const teamParam = url.searchParams.get("team");
   const upcoming = url.searchParams.get("upcoming");
+  const svpOnly = url.searchParams.get("svpOnly");
+  const leagueKeyParam = url.searchParams.get("leagueKey");
 
   if (req.method === "GET") {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
-    let matches = await stores$.matches().all();
+    let matches = (await stores$.matches().all()).map(normalizeMatch);
     if (teamParam) {
       const team = Number(teamParam) as TeamId;
       matches = matches.filter((m) => m.team === team);
+    }
+    if (svpOnly === "1") {
+      matches = matches.filter((m) => m.involvesSvp);
+    }
+    if (leagueKeyParam === "kreisklasse" || leagueKeyParam === "c-klasse") {
+      matches = matches.filter((m) => m.leagueKey === (leagueKeyParam as LeagueKey));
     }
     if (upcoming) {
       const now = Date.now();
@@ -38,21 +47,40 @@ export default async (req: Request): Promise<Response> => {
       return error(400, "Ungueltiges JSON");
     }
     const payload = body as Partial<Match>;
-    if (!payload.opponent || !payload.kickoff || !payload.team || !payload.homeAway) {
-      return error(400, "opponent, kickoff, team, homeAway sind Pflicht");
+    if (!payload.kickoff) return error(400, "kickoff ist Pflicht");
+    const team = payload.team as TeamId | undefined;
+    const leagueKey: LeagueKey =
+      payload.leagueKey ?? (team === 2 ? "c-klasse" : "kreisklasse");
+    const involvesSvp = payload.involvesSvp ?? !!team;
+    const homeTeamName =
+      payload.homeTeamName ??
+      (payload.homeAway === "home" ? "SV Petershausen" : payload.opponent);
+    const awayTeamName =
+      payload.awayTeamName ??
+      (payload.homeAway === "away" ? "SV Petershausen" : payload.opponent);
+    if (!homeTeamName || !awayTeamName) {
+      return error(400, "homeTeamName und awayTeamName (oder SVP-Felder) sind Pflicht");
     }
-    const match: Match = {
+    const match: Match = normalizeMatch({
       id: newId(),
-      team: payload.team as TeamId,
+      leagueKey,
+      round: payload.round,
+      homeTeamName,
+      awayTeamName,
+      involvesSvp,
+      tippable: payload.tippable ?? !involvesSvp,
+      team,
       opponent: payload.opponent,
-      kickoff: payload.kickoff,
       homeAway: payload.homeAway,
+      kickoff: payload.kickoff,
       location: payload.location,
-      league: payload.league ?? (payload.team === 1 ? "Kreisklasse 1 München" : "C-Klasse 1 München"),
+      league:
+        payload.league ??
+        (leagueKey === "kreisklasse" ? "Kreisklasse 1 München" : "C-Klasse 1 München"),
       result: payload.result,
       source: "manual",
       updatedAt: new Date().toISOString(),
-    };
+    });
     await stores$.matches().set(match.id, match);
     return json({ match }, 201);
   }

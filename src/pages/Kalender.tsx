@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight, Cake, Trophy, Download } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useMatches } from "@/api/matches";
+import { useSvpMatches } from "@/api/matches";
 import { useBirthdays } from "@/api/birthdays";
 import { usePlayers } from "@/api/players";
 import type { Match, Birthday, Player } from "@shared/types";
@@ -15,7 +15,7 @@ type CalendarEntry =
   | { kind: "birthday"; date: Date; birthday: Birthday; player: Player };
 
 export function KalenderPage() {
-  const { data: matches } = useMatches();
+  const { data: matches } = useSvpMatches();
   const { data: birthdays } = useBirthdays();
   const { data: players } = usePlayers();
   const [mode, setMode] = useState<"month" | "list">("list");
