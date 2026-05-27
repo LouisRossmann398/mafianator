@@ -13,9 +13,9 @@ interface ScrapeStatus {
   durationMs?: number;
 }
 
-export async function runScrape(): Promise<ScrapeStatus> {
+export async function runScrape(opts?: { skipUpcoming?: boolean }): Promise<ScrapeStatus> {
   const started = Date.now();
-  const fetched = await fetchAllMatches();
+  const fetched = await fetchAllMatches({ skipUpcoming: opts?.skipUpcoming });
   console.info("[scrape] fetched", fetched.length, "matches from FuPa");
 
   if (fetched.length === 0) {

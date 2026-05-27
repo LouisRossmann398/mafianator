@@ -179,17 +179,17 @@ function assignRoundsToUpcoming(matches: Match[]): Match[] {
   });
 }
 
-export async function fetchAllMatches(): Promise<Match[]> {
+export async function fetchAllMatches(opts?: { skipUpcoming?: boolean }): Promise<Match[]> {
   const season = await getFupaSeasonSlug();
   console.info("[scraper] FuPa season", season);
 
-  const [league, upcoming] = await Promise.all([
-    fetchAllLeagueMatches(),
-    fetchUpcomingMatches().catch((e) => {
-      console.error("[scraper] upcoming failed", e);
-      return [] as Match[];
-    }),
-  ]);
+  const league = await fetchAllLeagueMatches();
+  const upcoming = opts?.skipUpcoming
+    ? []
+    : await fetchUpcomingMatches().catch((e) => {
+        console.error("[scraper] upcoming failed", e);
+        return [] as Match[];
+      });
 
   const byId = new Map<string, Match>();
   for (const m of [...league, ...upcoming]) {

@@ -6,6 +6,8 @@ export interface ScrapeStatusInfo {
   lastRun?: string;
   lastError?: string;
   matchesTotal?: number;
+  matchesCreated?: number;
+  matchesUpdated?: number;
   durationMs?: number;
 }
 
@@ -75,10 +77,9 @@ export function useTriggerScrape() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () =>
-      apiFetch<{ status: { matchesTotal: number; matchesCreated: number; matchesUpdated: number } }>(
-        "/scrape-trigger",
-        { method: "POST" },
-      ).then((d) => d.status),
+      apiFetch<{ status: ScrapeStatusInfo }>("/scrape-trigger", { method: "POST" }).then(
+        (d) => d.status,
+      ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["matches"] });
       qc.invalidateQueries({ queryKey: ["scrape-status"] });

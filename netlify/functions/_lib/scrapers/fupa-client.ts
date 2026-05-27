@@ -1,13 +1,21 @@
 const USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+const FETCH_TIMEOUT_MS = 20_000;
+
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
 
 export async function fupaFetchJSON<T>(url: string, retries = 3): Promise<T> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithTimeout(url, {
         headers: {
           "User-Agent": USER_AGENT,
           Accept: "application/json",
@@ -20,11 +28,15 @@ export async function fupaFetchJSON<T>(url: string, retries = 3): Promise<T> {
       }
       if (!res.ok) {
         const body = await res.text().catch(() => "");
-        throw new Error(`FuPa ${res.status} ${url}${body ? `: ${body.slice(0, 120)}` : ""}`);
+        throw new Error(`FuPa ${res.status}${body ? `: ${body.slice(0, 120)}` : ""}`);
       }
       return (await res.json()) as T;
     } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e));
+      if (e instanceof Error && e.name === "AbortError") {
+        lastError = new Error(`FuPa Timeout (${FETCH_TIMEOUT_MS / 1000}s)`);
+      } else {
+        lastError = e instanceof Error ? e : new Error(String(e));
+      }
       if (attempt < retries - 1) await sleep(400 * (attempt + 1));
     }
   }
@@ -35,17 +47,21 @@ export async function fupaFetchText(url: string, retries = 2): Promise<string> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt < retries; attempt++) {
     try {
-      const res = await fetch(url, {
+      const res = await fetchWithTimeout(url, {
         headers: {
           "User-Agent": USER_AGENT,
           Accept: "text/html",
           "Accept-Language": "de-DE,de;q=0.9",
         },
       });
-      if (!res.ok) throw new Error(`FuPa HTML ${res.status} ${url}`);
+      if (!res.ok) throw new Error(`FuPa HTML ${res.status}`);
       return res.text();
     } catch (e) {
-      lastError = e instanceof Error ? e : new Error(String(e));
+      if (e instanceof Error && e.name === "AbortError") {
+        lastError = new Error(`FuPa HTML Timeout (${FETCH_TIMEOUT_MS / 1000}s)`);
+      } else {
+        lastError = e instanceof Error ? e : new Error(String(e));
+      }
       if (attempt < retries - 1) await sleep(300);
     }
   }

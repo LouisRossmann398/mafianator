@@ -48,9 +48,24 @@ export function AdminMatches() {
 
   const onScrape = async () => {
     try {
-      await trigger.mutateAsync();
+      const result = await trigger.mutateAsync();
       await qc.invalidateQueries({ queryKey: ["scrape-status"] });
-      toast({ title: "Scrape erfolgreich", variant: "success" });
+      await qc.invalidateQueries({ queryKey: ["matches"] });
+      if (result.lastError || (result.matchesTotal ?? 0) === 0) {
+        toast({
+          title: "Scrape fehlgeschlagen",
+          description:
+            result.lastError ??
+            "FuPa lieferte 0 Spiele. Netlify-Logs prüfen oder später erneut versuchen.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Scrape erfolgreich",
+        description: `${result.matchesTotal} Spiele (${result.matchesCreated ?? 0} neu)`,
+        variant: "success",
+      });
     } catch (e) {
       toast({
         title: "Fehler",
