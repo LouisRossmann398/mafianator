@@ -23,6 +23,10 @@
 
 [functions."scrape-matches"]
   schedule = "@hourly"
+  timeout = 60
+
+[functions."auth-login"]
+  timeout = 15
 
 [functions."evaluate-bets"]
   schedule = "0 */2 * * *"

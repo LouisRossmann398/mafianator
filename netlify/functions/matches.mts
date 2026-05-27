@@ -1,5 +1,6 @@
 import { stores$ } from "./_lib/blobs.ts";
 import { requireAuth } from "./_lib/auth.ts";
+import { ensureMatchesPopulated } from "./_lib/matches-init.ts";
 import { error, json, notAllowed } from "./_lib/response.ts";
 import { newId } from "./_lib/ids.ts";
 import { normalizeMatch } from "@shared/leagues.ts";
@@ -16,7 +17,13 @@ export default async (req: Request): Promise<Response> => {
   if (req.method === "GET") {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
-    let matches = (await stores$.matches().all()).map(normalizeMatch);
+    const rawMatches = await stores$.matches().all();
+    if (rawMatches.length === 0) {
+      void ensureMatchesPopulated().catch((e) =>
+        console.error("[matches] background populate failed", e),
+      );
+    }
+    let matches = rawMatches.map(normalizeMatch);
     if (teamParam) {
       const team = Number(teamParam) as TeamId;
       matches = matches.filter((m) => m.team === team);
