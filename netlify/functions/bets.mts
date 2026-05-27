@@ -16,6 +16,10 @@ export default async (req: Request): Promise<Response> => {
   if (req.method === "GET") {
     const auth = await requireAuth(req);
     if (!auth.ok) return auth.response;
+    if (url.searchParams.get("mine") === "1") {
+      const { runEvaluation } = await import("./evaluate-bets.mts");
+      await runEvaluation().catch((e) => console.error("[bets] evaluate failed", e));
+    }
     const all = await stores$.bets().all();
     let filtered = all;
     if (matchId) filtered = filtered.filter((b) => b.matchId === matchId);

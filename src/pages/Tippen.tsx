@@ -9,6 +9,7 @@ import {
   Sparkles,
   Lock,
   Shield,
+  History,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,11 @@ import type { LeagueKey, Match, Bet } from "@shared/types";
 import {
   defaultRoundIndex,
   groupMatchesByRound,
+  isMatchFinished,
   isMatchOpenForTips,
+  pointsForBet,
   sortedRounds,
+  statsForRound,
 } from "@shared/betting";
 import { LEAGUE_LABELS } from "@shared/leagues";
 import { randomRealisticScore } from "@shared/random-scores";
@@ -32,6 +36,12 @@ const LEAGUE_TABS: { key: LeagueKey; label: string; short: string }[] = [
   { key: "kreisklasse", label: "Kreisklasse", short: "KK" },
   { key: "c-klasse", label: "C-Klasse", short: "CK" },
 ];
+
+function pointsBadgeVariant(points: number): "success" | "warning" | "outline" {
+  if (points === 3) return "success";
+  if (points > 0) return "warning";
+  return "outline";
+}
 
 export function TippenPage() {
   const { data, isLoading, isFetching, refetch } = useMatches();
@@ -59,11 +69,18 @@ export function TippenPage() {
     return groupMatchesByRound(matches ?? [], leagueKey).get(currentRound) ?? [];
   }, [matches, leagueKey, currentRound]);
 
+  const betFor = (matchId: string) => bets?.find((b) => b.matchId === matchId);
+  const roundStats = useMemo(
+    () => statsForRound(roundMatches, betFor),
+    [roundMatches, bets],
+  );
+
   const svpMatches = roundMatches.filter((m) => m.involvesSvp);
   const tippableMatches = roundMatches.filter((m) => m.tippable);
   const openTippable = tippableMatches.filter(isMatchOpenForTips);
-
-  const betFor = (matchId: string) => bets?.find((b) => b.matchId === matchId);
+  const finishedTippable = tippableMatches.filter(
+    (m) => !isMatchOpenForTips(m) && isMatchFinished(m),
+  );
 
   const bulk = useSubmitBetsBulk();
   const { toast } = useToast();
@@ -113,9 +130,8 @@ export function TippenPage() {
         <CardContent className="p-4 text-xs space-y-2">
           <div className="font-semibold text-sm">So funktioniert&apos;s</div>
           <p className="text-muted-foreground leading-relaxed">
-            Tippe nur Spiele <strong>ohne SV Petershausen</strong>. SVP-Partien siehst du zur
-            Orientierung, sind aber gesperrt. Kreisklasse und C-Klasse tippst du getrennt pro
-            Spieltag – die Punkte zählen in einer gemeinsamen Tabelle.
+            Mit <strong>← →</strong> alle Spieltage durchblättern – auch vergangene mit Ergebnis
+            und deinen Punkten. Tippe nur Spiele ohne SV Petershausen.
           </p>
           <div className="text-muted-foreground">
             3 Pkt = exakt · 2 = Tordifferenz · 1 = Tendenz · 0 = falsch
@@ -143,33 +159,68 @@ export function TippenPage() {
       </div>
 
       {rounds.length > 0 && currentRound != null && (
-        <div className="flex items-center gap-2">
-          <Button
-            size="icon"
-            variant="outline"
-            disabled={roundIdx <= 0}
-            onClick={() => setRoundIdx((i) => Math.max(0, i - 1))}
-            aria-label="Vorheriger Spieltag"
-          >
-            <ChevronLeft size={18} />
-          </Button>
-          <div className="flex-1 text-center">
-            <div className="text-xs text-muted-foreground uppercase tracking-wide">Spieltag</div>
-            <div className="text-lg font-bold">{currentRound}</div>
-            <div className="text-[10px] text-muted-foreground">
-              {roundIdx + 1} / {rounds.length}
+        <>
+          <div className="flex items-center gap-2">
+            <Button
+              size="icon"
+              variant="outline"
+              disabled={roundIdx <= 0}
+              onClick={() => setRoundIdx((i) => Math.max(0, i - 1))}
+              aria-label="Vorheriger Spieltag"
+            >
+              <ChevronLeft size={18} />
+            </Button>
+            <div className="flex-1 text-center">
+              <div className="text-xs text-muted-foreground uppercase tracking-wide">Spieltag</div>
+              <div className="text-lg font-bold">{currentRound}</div>
+              <div className="text-[10px] text-muted-foreground">
+                {roundIdx + 1} / {rounds.length}
+              </div>
             </div>
+            <Button
+              size="icon"
+              variant="outline"
+              disabled={roundIdx >= rounds.length - 1}
+              onClick={() => setRoundIdx((i) => Math.min(rounds.length - 1, i + 1))}
+              aria-label="Nächster Spieltag"
+            >
+              <ChevronRight size={18} />
+            </Button>
           </div>
-          <Button
-            size="icon"
-            variant="outline"
-            disabled={roundIdx >= rounds.length - 1}
-            onClick={() => setRoundIdx((i) => Math.min(rounds.length - 1, i + 1))}
-            aria-label="Nächster Spieltag"
+
+          <Card
+            className={cn(
+              roundStats.finished ? "border-muted-foreground/30" : "border-primary/40",
+            )}
           >
-            <ChevronRight size={18} />
-          </Button>
-        </div>
+            <CardContent className="p-3 flex flex-wrap items-center justify-between gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                {roundStats.finished ? (
+                  <Badge variant="outline" className="gap-1 text-[10px]">
+                    <History size={10} /> Beendet
+                  </Badge>
+                ) : (
+                  <Badge variant="default" className="text-[10px]">
+                    Offen / laufend
+                  </Badge>
+                )}
+                <span className="text-muted-foreground text-xs">
+                  {roundStats.totalGames} tippbare Spiele
+                </span>
+              </div>
+              {roundStats.tipped > 0 && (
+                <div className="font-semibold tabular-nums">
+                  Deine Punkte:{" "}
+                  <span className="text-primary">{roundStats.points}</span>
+                  <span className="text-muted-foreground font-normal text-xs">
+                    {" "}
+                    ({roundStats.evaluated}/{roundStats.tipped} ausgewertet)
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {openTippable.length > 0 && (
@@ -200,12 +251,6 @@ export function TippenPage() {
             {scrapeStatus?.lastError && (
               <p className="text-xs text-destructive/90">FuPa: {scrapeStatus.lastError}</p>
             )}
-            {!matches?.length && (
-              <p className="text-xs">
-                Saison 2025/26 · Spieltag 26 (Wochenende) steht bei FuPa oft nur auf der
-                Vereinsseite – nach „Laden“ kurz warten und Seite neu laden.
-              </p>
-            )}
             <div className="flex flex-col gap-2">
               <Button
                 variant="outline"
@@ -229,44 +274,58 @@ export function TippenPage() {
             <Shield size={12} /> SV Petershausen (nur Anzeige)
           </h2>
           {svpMatches.map((m) => (
-            <SvpMatchCard key={m.id} match={m} bet={betFor(m.id)} />
+            <SvpMatchCard key={m.id} match={m} />
           ))}
         </section>
       )}
 
-      <section className="space-y-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          Tippen ({tippableMatches.length} Spiele)
-        </h2>
-        {tippableMatches.length === 0 && rounds.length > 0 && (
-          <Card>
-            <CardContent className="p-4 text-center text-sm text-muted-foreground">
-              In diesem Spieltag keine anderen Begegnungen.
-            </CardContent>
-          </Card>
-        )}
-        {tippableMatches.map((m) => (
-          <BetCard
-            key={m.id}
-            match={m}
-            bet={betFor(m.id)}
-            draft={drafts[m.id]}
-            onDraftChange={(d) => setDrafts((prev) => ({ ...prev, [m.id]: d }))}
-          />
-        ))}
-      </section>
+      {finishedTippable.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            <History size={12} /> Ergebnisse ({finishedTippable.length})
+          </h2>
+          {finishedTippable.map((m) => (
+            <FinishedBetCard key={m.id} match={m} bet={betFor(m.id)} />
+          ))}
+        </section>
+      )}
+
+      {openTippable.length > 0 && (
+        <section className="space-y-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Tipps abgeben ({openTippable.length})
+          </h2>
+          {openTippable.map((m) => (
+            <BetCard
+              key={m.id}
+              match={m}
+              bet={betFor(m.id)}
+              draft={drafts[m.id]}
+              onDraftChange={(d) => setDrafts((prev) => ({ ...prev, [m.id]: d }))}
+            />
+          ))}
+        </section>
+      )}
+
+      {tippableMatches.length === 0 && rounds.length > 0 && (
+        <Card>
+          <CardContent className="p-4 text-center text-sm text-muted-foreground">
+            In diesem Spieltag keine tippbaren Begegnungen (nur SVP-Spiele).
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
 
-function SvpMatchCard({ match, bet }: { match: Match; bet?: Bet }) {
+function SvpMatchCard({ match }: { match: Match }) {
   const finished = !!match.result;
   const open = !finished && new Date(match.kickoff).getTime() > Date.now();
 
   return (
     <Card className="border-dashed opacity-90">
       <CardContent className="p-4 space-y-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
           <Clock size={12} />
           <span>
             {formatDate(match.kickoff)} {formatTime(match.kickoff)}
@@ -280,22 +339,81 @@ function SvpMatchCard({ match, bet }: { match: Match; bet?: Bet }) {
             <Lock size={10} /> nicht tippbar
           </Badge>
         </div>
-        <div className="text-sm font-medium text-center">
-          {match.homeTeamName}{" "}
-          <span className="text-muted-foreground font-normal">vs</span> {match.awayTeamName}
-        </div>
+        <MatchTeams match={match} />
         {finished && match.result && (
-          <div className="text-center font-mono text-lg">
+          <div className="text-center font-mono text-lg font-semibold">
             Ergebnis {match.result.homeGoals}:{match.result.awayGoals}
           </div>
         )}
         {open && (
           <p className="text-center text-[11px] text-muted-foreground">Noch nicht gespielt</p>
         )}
-        {bet && (
-          <p className="text-center text-[10px] text-muted-foreground">
-            (Tipp auf SVP-Spiele wird nicht gewertet)
-          </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function MatchTeams({ match }: { match: Match }) {
+  return (
+    <div className="text-sm font-medium text-center leading-snug">
+      {match.homeTeamName}{" "}
+      <span className="text-muted-foreground font-normal">vs</span> {match.awayTeamName}
+    </div>
+  );
+}
+
+function FinishedBetCard({ match, bet }: { match: Match; bet?: Bet }) {
+  const points = pointsForBet(bet, match);
+
+  return (
+    <Card className="bg-secondary/30">
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Clock size={12} />
+          <span>
+            {formatDate(match.kickoff)} {formatTime(match.kickoff)}
+          </span>
+          <Badge variant="outline" className="text-[10px]">
+            Beendet
+          </Badge>
+        </div>
+        <MatchTeams match={match} />
+        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+          <div className="rounded-lg bg-background/60 p-2">
+            <div className="text-muted-foreground mb-1">Dein Tipp</div>
+            {bet ? (
+              <div className="font-mono text-base font-bold">
+                {bet.homeGoals}:{bet.awayGoals}
+              </div>
+            ) : (
+              <div className="text-muted-foreground">—</div>
+            )}
+          </div>
+          <div className="rounded-lg bg-background/60 p-2">
+            <div className="text-muted-foreground mb-1">Ergebnis</div>
+            {match.result && (
+              <div className="font-mono text-base font-bold">
+                {match.result.homeGoals}:{match.result.awayGoals}
+              </div>
+            )}
+          </div>
+          <div className="rounded-lg bg-background/60 p-2">
+            <div className="text-muted-foreground mb-1">Punkte</div>
+            {bet ? (
+              points !== undefined ? (
+                <Badge variant={pointsBadgeVariant(points)} className="font-mono text-base px-2">
+                  {points}
+                </Badge>
+              ) : (
+                <span className="text-muted-foreground text-[10px]">offen</span>
+              )
+            ) : (
+              <span className="text-muted-foreground text-[10px]">kein Tipp</span>
+            )}
+          </div>
+        </div>
+        {!bet && (
+          <p className="text-center text-[10px] text-muted-foreground">Du hast nicht getippt.</p>
         )}
       </CardContent>
     </Card>
@@ -315,7 +433,6 @@ function BetCard({
 }) {
   const submit = useSubmitBet();
   const { toast } = useToast();
-  const open = isMatchOpenForTips(match);
   const [home, setHome] = useState(draft?.home ?? (bet ? String(bet.homeGoals) : ""));
   const [away, setAway] = useState(draft?.away ?? (bet ? String(bet.awayGoals) : ""));
   const [saved, setSaved] = useState(!!bet);
@@ -349,7 +466,6 @@ function BetCard({
 
   const onSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!open) return;
     const h = Number(home);
     const a = Number(away);
     if (Number.isNaN(h) || Number.isNaN(a) || h < 0 || a < 0) {
@@ -377,11 +493,6 @@ function BetCard({
           <span>
             {formatDate(match.kickoff)} {formatTime(match.kickoff)}
           </span>
-          {!open && (
-            <Badge variant="outline" className="text-[10px]">
-              {match.result ? "Beendet" : "Gesperrt"}
-            </Badge>
-          )}
         </div>
         <form onSubmit={onSubmit} className="flex items-center gap-2">
           <div className="flex-1 text-right text-xs sm:text-sm font-medium leading-tight">
@@ -391,48 +502,34 @@ function BetCard({
             type="number"
             min="0"
             max="20"
-            disabled={!open}
             value={home}
             onChange={(e) => updateHome(e.target.value)}
-            className="h-11 w-14 rounded-lg border border-input bg-background px-2 text-center text-lg font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="h-11 w-14 rounded-lg border border-input bg-background px-2 text-center text-lg font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <span className="text-muted-foreground">:</span>
           <input
             type="number"
             min="0"
             max="20"
-            disabled={!open}
             value={away}
             onChange={(e) => updateAway(e.target.value)}
-            className="h-11 w-14 rounded-lg border border-input bg-background px-2 text-center text-lg font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+            className="h-11 w-14 rounded-lg border border-input bg-background px-2 text-center text-lg font-bold tabular-nums focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           />
           <div className="flex-1 text-left text-xs sm:text-sm font-medium leading-tight">
             {match.awayTeamName}
           </div>
         </form>
-        {match.result && (
-          <div className="text-center text-xs text-muted-foreground">
-            Ergebnis {match.result.homeGoals}:{match.result.awayGoals}
-            {bet?.points !== undefined && (
-              <Badge className="ml-2 text-[10px]" variant={bet.points === 3 ? "success" : "outline"}>
-                {bet.points} Pkt
-              </Badge>
-            )}
-          </div>
-        )}
-        {open && (
-          <div className="flex items-center gap-2">
-            {saved && bet && (
-              <Badge variant="success" className="text-[10px]">
-                <Check size={10} className="mr-1" /> Gespeichert
-              </Badge>
-            )}
-            <div className="flex-1" />
-            <Button size="sm" type="button" loading={submit.isPending} onClick={() => onSubmit()}>
-              Speichern
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {saved && bet && (
+            <Badge variant="success" className="text-[10px]">
+              <Check size={10} className="mr-1" /> Gespeichert
+            </Badge>
+          )}
+          <div className="flex-1" />
+          <Button size="sm" type="button" loading={submit.isPending} onClick={() => onSubmit()}>
+            Speichern
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

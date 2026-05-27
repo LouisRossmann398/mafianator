@@ -1,5 +1,6 @@
-import type { LeagueKey, Match } from "./types.ts";
+import type { Bet, LeagueKey, Match } from "./types.ts";
 import { normalizeMatch } from "./leagues.ts";
+import { calcPoints } from "./scoring.ts";
 
 export function groupMatchesByRound(matches: Match[], leagueKey: LeagueKey): Map<number, Match[]> {
   const normalized = matches.map(normalizeMatch).filter((m) => m.leagueKey === leagueKey);
@@ -41,4 +42,50 @@ export function isMatchOpenForTips(match: Match): boolean {
   if (!m.tippable) return false;
   if (m.result) return false;
   return new Date(m.kickoff).getTime() > Date.now();
+}
+
+export function isMatchFinished(match: Match): boolean {
+  return !!normalizeMatch(match).result;
+}
+
+export function pointsForBet(bet: Bet | undefined, match: Match): number | undefined {
+  if (!bet || !match.result) return undefined;
+  if (typeof bet.points === "number") return bet.points;
+  return calcPoints(
+    { homeGoals: bet.homeGoals, awayGoals: bet.awayGoals },
+    match.result,
+  );
+}
+
+export interface RoundStats {
+  totalGames: number;
+  tipped: number;
+  evaluated: number;
+  points: number;
+  finished: boolean;
+}
+
+export function statsForRound(
+  roundMatches: Match[],
+  betFor: (matchId: string) => Bet | undefined,
+): RoundStats {
+  const tippable = roundMatches.filter((m) => m.tippable);
+  let points = 0;
+  let tipped = 0;
+  let evaluated = 0;
+  let finished = tippable.length > 0;
+
+  for (const m of tippable) {
+    if (!isMatchFinished(m)) finished = false;
+    const bet = betFor(m.id);
+    if (!bet) continue;
+    tipped += 1;
+    const p = pointsForBet(bet, m);
+    if (p !== undefined) {
+      evaluated += 1;
+      points += p;
+    }
+  }
+
+  return { totalGames: tippable.length, tipped, evaluated, points, finished };
 }
