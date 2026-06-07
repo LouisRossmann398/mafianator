@@ -9,7 +9,7 @@ import seedUsers from "../../../seed/users.json" with { type: "json" };
 import seedCatalog from "../../../seed/catalog.json" with { type: "json" };
 import seedPlayers from "../../../seed/players.json" with { type: "json" };
 
-const SEED_VERSION = 1;
+const SEED_VERSION = 2;
 const META_KEY = "seed-version";
 
 let cachedSeed: Promise<void> | null = null;
@@ -41,13 +41,7 @@ async function runSeed(): Promise<void> {
     }
   }
 
-  const catalog = stores$.catalog();
-  for (const c of seedCatalog as CatalogEntry[]) {
-    const existing = await catalog.get(c.id);
-    if (!existing) {
-      await catalog.set(c.id, c);
-    }
-  }
+  await syncCatalogFromSeed();
 
   const players = stores$.players();
   for (const p of seedPlayers as Player[]) {
@@ -73,4 +67,17 @@ async function runSeed(): Promise<void> {
   }
 
   await meta.set(META_KEY, { version: SEED_VERSION } as never);
+}
+
+/** Katalog bei Seed-Update vollständig aus seed/catalog.json ersetzen. */
+async function syncCatalogFromSeed(): Promise<void> {
+  const catalog = stores$.catalog();
+  const entries = seedCatalog as CatalogEntry[];
+  const seedIds = new Set(entries.map((c) => c.id));
+  for (const key of await catalog.list()) {
+    if (!seedIds.has(key)) await catalog.delete(key);
+  }
+  for (const entry of entries) {
+    await catalog.set(entry.id, entry);
+  }
 }
