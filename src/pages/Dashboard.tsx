@@ -21,7 +21,9 @@ export function DashboardPage() {
   const { data: birthdays } = useBirthdays();
   const { data: players } = usePlayers();
 
-  const openPenalties = (penalties ?? []).filter((p) => p.status === "open");
+  const openPenalties = (penalties ?? []).filter(
+    (p) => p.status === "open" || p.status === "accepted",
+  );
   const nextMatch = matches?.[0];
   const nextBirthday = (birthdays ?? [])
     .map((b) => {
@@ -60,7 +62,8 @@ export function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{p.reason}</div>
                     <div className="text-xs text-muted-foreground">
-                      {formatDateTime(p.createdAt)} · noch nicht abgebucht
+                      {formatDateTime(p.createdAt)}
+                      {p.status === "open" ? " · noch nicht akzeptiert" : " · Zahlung offen"}
                     </div>
                   </div>
                   <div className="font-bold tabular-nums text-destructive">

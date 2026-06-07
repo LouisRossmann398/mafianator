@@ -90,7 +90,7 @@ export function usePatchPenalty() {
       reason,
     }: {
       id: string;
-      action: "mark-paid" | "reopen" | "edit";
+      action: "accept" | "mark-paid" | "reopen" | "edit";
       amount?: number;
       reason?: string;
     }) =>

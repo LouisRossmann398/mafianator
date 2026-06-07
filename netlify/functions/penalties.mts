@@ -58,8 +58,6 @@ export default async (req: Request): Promise<Response> => {
   }
 
   if (req.method === "PATCH") {
-    const auth = await requireAuth(req, ["admin", "treasurer"]);
-    if (!auth.ok) return auth.response;
     if (!id) return error(400, "id fehlt");
     let body: unknown;
     try {
@@ -70,8 +68,35 @@ export default async (req: Request): Promise<Response> => {
     const existing = await stores$.penalties().get(id);
     if (!existing) return error(404, "Strafe nicht gefunden");
     const payload = body as { action?: string; amount?: number; reason?: string };
+
+    if (payload.action === "accept") {
+      const auth = await requireAuth(req);
+      if (!auth.ok) return auth.response;
+      if (existing.playerId !== auth.user.playerId) {
+        return error(403, "Nur eigene Strafen akzeptieren");
+      }
+      if (existing.status !== "open") {
+        return error(400, "Strafe ist nicht mehr offen");
+      }
+      const updated: Penalty = {
+        ...existing,
+        status: "accepted",
+        acceptedAt: new Date().toISOString(),
+      };
+      await stores$.penalties().set(id, updated);
+      return json({ penalty: updated });
+    }
+
+    const auth = await requireAuth(req, ["admin", "treasurer"]);
+    if (!auth.ok) return auth.response;
+
     if (payload.action === "mark-paid") {
-      if (existing.status === "paid") return json({ penalty: existing });
+      if (existing.status === "paid" || existing.status === "gambled-won") {
+        return json({ penalty: existing });
+      }
+      if (existing.status !== "open" && existing.status !== "accepted") {
+        return error(400, "Strafe kann nicht als bezahlt markiert werden");
+      }
       const updated: Penalty = {
         ...existing,
         status: "paid",
@@ -84,6 +109,7 @@ export default async (req: Request): Promise<Response> => {
       const updated: Penalty = {
         ...existing,
         status: "open",
+        acceptedAt: undefined,
         paidAt: undefined,
       };
       await stores$.penalties().set(id, updated);

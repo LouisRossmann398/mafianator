@@ -20,7 +20,9 @@ export function AdminOverview() {
   const { data: users } = useUsers();
   const { toast } = useToast();
 
-  const open = (penalties ?? []).filter((p) => p.status === "open").length;
+  const open = (penalties ?? []).filter(
+    (p) => p.status === "open" || p.status === "accepted",
+  ).length;
   const collected = (penalties ?? []).filter((p) => p.status === "paid").length;
   const totalNachzahlung = totalNachzahlungen(balances?.balances ?? {});
 

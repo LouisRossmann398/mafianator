@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Trophy, CircleDot, Coins, AlertTriangle, Check } from "lucide-react";
+import { Plus, Trophy, CircleDot, Coins, AlertTriangle, Check, Wallet } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,7 +67,7 @@ export function PenaltiesPage() {
         </button>
       </div>
 
-      {tab === "meine" ? <MeineSection /> : <MannschaftSection />}
+      {tab === "meine" ? <MeineSection /> : <MannschaftSection isTreasurer={isTreasurer} />}
 
       <PenaltyAdd open={!!dialog} onClose={() => setDialog(null)} mode={dialog ?? "penalty"} />
     </div>
@@ -83,7 +83,10 @@ function MeineSection() {
   const season = balanceData?.season;
 
   const open = (penalties ?? []).filter((p) => p.status === "open");
-  const closed = (penalties ?? []).filter((p) => p.status !== "open");
+  const accepted = (penalties ?? []).filter((p) => p.status === "accepted");
+  const closed = (penalties ?? []).filter(
+    (p) => p.status !== "open" && p.status !== "accepted",
+  );
 
   return (
     <div className="space-y-4">
@@ -105,6 +108,19 @@ function MeineSection() {
           </ul>
         )}
       </div>
+
+      {accepted.length > 0 && (
+        <div>
+          <h2 className="mb-2 text-sm font-semibold text-muted-foreground">
+            Akzeptiert – Zahlung ausstehend
+          </h2>
+          <ul className="space-y-2">
+            {accepted.map((p) => (
+              <PenaltyAcceptedCard key={p.id} penalty={p} />
+            ))}
+          </ul>
+        </div>
+      )}
 
       {(closed.length > 0 || (goodDeeds && goodDeeds.length > 0)) && (
         <div>
@@ -136,9 +152,10 @@ function MeineSection() {
   );
 }
 
-function MannschaftSection() {
+function MannschaftSection({ isTreasurer }: { isTreasurer: boolean }) {
   const { data: balanceData, isLoading } = useBalances();
   const { data: players } = usePlayers();
+  const { data: allPenalties } = usePenalties();
 
   const rows = useMemo(() => {
     if (!balanceData || !players) return [];
@@ -152,8 +169,40 @@ function MannschaftSection() {
       .sort((a, b) => b.balance.balance - a.balance.balance);
   }, [balanceData, players]);
 
+  const pendingPayment = useMemo(() => {
+    if (!allPenalties || !players) return [];
+    return allPenalties
+      .filter((p) => p.status === "open" || p.status === "accepted")
+      .map((p) => ({
+        penalty: p,
+        player: players.find((pl) => pl.id === p.playerId),
+      }))
+      .sort((a, b) => b.penalty.createdAt.localeCompare(a.penalty.createdAt));
+  }, [allPenalties, players]);
+
   return (
     <div className="space-y-3">
+      {isTreasurer && pendingPayment.length > 0 && (
+        <Card>
+          <CardHeader className="p-4 pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Wallet size={16} /> Zahlungen bestätigen
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ul className="divide-y divide-border">
+              {pendingPayment.map(({ penalty, player }) => (
+                <TreasurerPenaltyRow
+                  key={penalty.id}
+                  penalty={penalty}
+                  playerName={player?.name ?? penalty.playerId}
+                />
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {isLoading && <div className="text-sm text-muted-foreground">Lade...</div>}
       <Card>
         <CardHeader className="p-4 pb-2">
@@ -199,12 +248,13 @@ function MannschaftSection() {
 function PenaltyOpenCard({ penalty }: { penalty: Penalty }) {
   const { toast } = useToast();
   const patch = usePatchPenalty();
+  const canGamble = penalty.canGamble && penalty.amount < 10;
 
   const accept = async () => {
-    if (!confirm(`Strafe über ${formatEuro(penalty.amount)} vom Guthaben abbuchen?`)) return;
+    if (!confirm(`Strafe über ${formatEuro(penalty.amount)} akzeptieren?`)) return;
     try {
-      await patch.mutateAsync({ id: penalty.id, action: "mark-paid" });
-      toast({ title: "Vom Guthaben abgebucht", variant: "success" });
+      await patch.mutateAsync({ id: penalty.id, action: "accept" });
+      toast({ title: "Strafe akzeptiert", variant: "success" });
     } catch (e) {
       toast({
         title: "Fehler",
@@ -217,35 +267,23 @@ function PenaltyOpenCard({ penalty }: { penalty: Penalty }) {
   return (
     <Card>
       <CardContent className="p-3 space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-            <CircleDot size={18} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="font-medium truncate">{penalty.reason}</div>
-            <div className="text-xs text-muted-foreground">{formatDateTime(penalty.createdAt)}</div>
-          </div>
-          <div className="text-right">
-            <div className="font-bold tabular-nums text-destructive">
-              −{formatEuro(penalty.amount)}
-            </div>
-            {penalty.canGamble && (
-              <Badge variant="success" className="text-[10px]">
-                zockbar
-              </Badge>
-            )}
-          </div>
-        </div>
+        <PenaltyRowHeader penalty={penalty} />
         <div className="flex gap-2">
-          {penalty.canGamble && penalty.amount < 10 ? (
+          {canGamble ? (
             <Link to={`/strafen/${penalty.id}/zocken`} className="flex-1">
               <Button variant="default" size="sm" className="w-full">
                 <Coins size={14} /> Zocken (Doppelt o. Nichts)
               </Button>
             </Link>
           ) : null}
-          <Button onClick={accept} variant="outline" size="sm" className="flex-1">
-            <Check size={14} /> Abgebucht
+          <Button
+            onClick={accept}
+            variant={canGamble ? "outline" : "default"}
+            size="sm"
+            className="flex-1"
+            loading={patch.isPending}
+          >
+            <Check size={14} /> Akzeptieren
           </Button>
         </div>
       </CardContent>
@@ -253,11 +291,99 @@ function PenaltyOpenCard({ penalty }: { penalty: Penalty }) {
   );
 }
 
+function PenaltyAcceptedCard({ penalty }: { penalty: Penalty }) {
+  return (
+    <Card className="border-dashed">
+      <CardContent className="p-3">
+        <PenaltyRowHeader penalty={penalty} />
+        <p className="mt-2 text-xs text-muted-foreground">
+          Du hast die Strafe akzeptiert. Der Kassenwart markiert sie als bezahlt, sobald du
+          eingezahlt hast.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TreasurerPenaltyRow({
+  penalty,
+  playerName,
+}: {
+  penalty: Penalty;
+  playerName: string;
+}) {
+  const { toast } = useToast();
+  const patch = usePatchPenalty();
+
+  const markPaid = async () => {
+    if (!confirm(`${playerName}: ${formatEuro(penalty.amount)} als bezahlt markieren?`)) return;
+    try {
+      await patch.mutateAsync({ id: penalty.id, action: "mark-paid" });
+      toast({ title: "Als bezahlt markiert", variant: "success" });
+    } catch (e) {
+      toast({
+        title: "Fehler",
+        description: e instanceof Error ? e.message : "Unbekannt",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <li className="flex items-center gap-3 p-3">
+      <div className="flex-1 min-w-0">
+        <div className="font-medium truncate">{playerName}</div>
+        <div className="text-sm text-muted-foreground truncate">{penalty.reason}</div>
+        <div className="flex items-center gap-2 mt-1">
+          <Badge variant="outline" className="text-[10px]">
+            {penalty.status === "open" ? "offen" : "akzeptiert"}
+          </Badge>
+          <span className="text-[10px] text-muted-foreground">
+            {formatDateTime(penalty.createdAt)}
+          </span>
+        </div>
+      </div>
+      <div className="text-right space-y-1">
+        <div className="font-bold tabular-nums text-destructive">
+          −{formatEuro(penalty.amount)}
+        </div>
+        <Button size="sm" variant="secondary" loading={patch.isPending} onClick={markPaid}>
+          Bezahlt
+        </Button>
+      </div>
+    </li>
+  );
+}
+
+function PenaltyRowHeader({ penalty }: { penalty: Penalty }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/15 text-destructive">
+        <CircleDot size={18} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium truncate">{penalty.reason}</div>
+        <div className="text-xs text-muted-foreground">{formatDateTime(penalty.createdAt)}</div>
+      </div>
+      <div className="text-right">
+        <div className="font-bold tabular-nums text-destructive">
+          −{formatEuro(penalty.amount)}
+        </div>
+        {penalty.canGamble && penalty.status === "open" && (
+          <Badge variant="success" className="text-[10px]">
+            zockbar
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PenaltyHistoryCard({ penalty }: { penalty: Penalty }) {
   const statusBadge = () => {
     switch (penalty.status) {
       case "paid":
-        return <Badge variant="outline">abgebucht</Badge>;
+        return <Badge variant="outline">bezahlt</Badge>;
       case "gambled-won":
         return <Badge variant="success">Glücksrad gewonnen</Badge>;
       case "gambled-lost":
@@ -283,7 +409,7 @@ function PenaltyHistoryCard({ penalty }: { penalty: Penalty }) {
           <div className="text-xs text-muted-foreground">{formatDateTime(penalty.createdAt)}</div>
         </div>
         <div className="text-sm font-semibold tabular-nums">
-          {amount > 0 ? `-${formatEuro(amount)}` : "0 €"}
+          {amount > 0 ? `−${formatEuro(amount)}` : "0 €"}
         </div>
       </CardContent>
     </Card>

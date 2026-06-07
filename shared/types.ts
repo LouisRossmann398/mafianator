@@ -26,6 +26,7 @@ export interface Player {
 
 export type PenaltyStatus =
   | "open"
+  | "accepted"
   | "paid"
   | "gambled-won"
   | "gambled-lost"
@@ -41,6 +42,7 @@ export interface Penalty {
   createdBy: string;
   createdAt: string;
   status: PenaltyStatus;
+  acceptedAt?: string;
   paidAt?: string;
   gambledAt?: string;
   gambleResult?: "won" | "lost";
