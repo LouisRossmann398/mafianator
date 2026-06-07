@@ -6,6 +6,7 @@ import { Input, Label } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { useSeasons, useStartNewSeason } from "@/api/seasons";
+import { DEFAULT_SEASON_DEPOSIT, seasonDeposit } from "@shared/balance";
 import { formatDate, formatEuro } from "@/lib/format";
 
 export function AdminSeason() {
@@ -14,7 +15,7 @@ export function AdminSeason() {
   const { toast } = useToast();
   const [confirm, setConfirm] = useState(false);
   const [name, setName] = useState("Saison " + new Date().getFullYear() + "/" + ((new Date().getFullYear() + 1) % 100));
-  const [startBalance, setStartBalance] = useState(-100);
+  const [startBalance, setStartBalance] = useState(DEFAULT_SEASON_DEPOSIT);
 
   const onStart = async () => {
     try {
@@ -45,8 +46,8 @@ export function AdminSeason() {
             <div className="space-y-0.5">
               <div className="text-xl font-bold">{data.current.name}</div>
               <div className="text-xs text-muted-foreground">
-                Start: {formatDate(data.current.startedAt)} · Start-Balance{" "}
-                {formatEuro(data.current.startBalance)}
+                Start: {formatDate(data.current.startedAt)} · Einzahlung{" "}
+                {formatEuro(seasonDeposit(data.current.startBalance))}
               </div>
             </div>
           )}
@@ -70,16 +71,18 @@ export function AdminSeason() {
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="startBalance">Start-Balance (EUR)</Label>
+            <Label htmlFor="startBalance">Saison-Einzahlung (EUR)</Label>
             <Input
               id="startBalance"
               type="number"
+              min="1"
               step="10"
               value={startBalance}
               onChange={(e) => setStartBalance(Number(e.target.value))}
             />
             <div className="text-xs text-muted-foreground">
-              Standard ist -100 EUR. Jeder Spieler beginnt bei diesem Betrag.
+              Standard ist {formatEuro(DEFAULT_SEASON_DEPOSIT)}. Jeder Spieler startet mit diesem
+              Guthaben in der Mannschaftskasse.
             </div>
           </div>
           {confirm ? (

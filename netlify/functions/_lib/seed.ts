@@ -65,7 +65,7 @@ async function runSeed(): Promise<void> {
       id: seasonId,
       name: "Saison 2025/26",
       startedAt: new Date().toISOString(),
-      startBalance: -100,
+      startBalance: 100,
       active: true,
     };
     await seasons.set(seasonId, initial);

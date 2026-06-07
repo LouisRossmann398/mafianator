@@ -12,6 +12,7 @@ import { useAchievements } from "@/api/achievements";
 import { BADGES, BADGE_BY_ID } from "@shared/achievements";
 import { apiFetch } from "@/api/client";
 import { formatEuro } from "@/lib/format";
+import { DEFAULT_SEASON_DEPOSIT, guthabenTone } from "@shared/balance";
 import { cn } from "@/lib/cn";
 
 export function ProfilPage() {
@@ -52,9 +53,14 @@ export function ProfilPage() {
       <div className="grid grid-cols-2 gap-3">
         <Stat
           icon={<Coins size={14} />}
-          label="Balance"
-          value={formatEuro(balance?.balance ?? -100)}
-          tone={(balance?.balance ?? -100) >= 0 ? "success" : "default"}
+          label="Guthaben"
+          value={formatEuro(balance?.balance ?? DEFAULT_SEASON_DEPOSIT)}
+          tone={
+            guthabenTone(balance?.balance ?? DEFAULT_SEASON_DEPOSIT, balance?.startBalance ?? DEFAULT_SEASON_DEPOSIT) ===
+            "success"
+              ? "success"
+              : "default"
+          }
         />
         <Stat
           icon={<TrendingDown size={14} />}

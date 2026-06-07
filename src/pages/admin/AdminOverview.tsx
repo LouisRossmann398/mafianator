@@ -8,6 +8,7 @@ import { useBfvSync, useLeagueMatches } from "@/api/league-matches";
 import { useUsers } from "@/api/users";
 import { useToast } from "@/components/ui/toast";
 import { TIP_SEASON_LABEL } from "@shared/leagues";
+import { totalNachzahlungen } from "@shared/balance";
 import { formatEuro } from "@/lib/format";
 
 export function AdminOverview() {
@@ -21,10 +22,7 @@ export function AdminOverview() {
 
   const open = (penalties ?? []).filter((p) => p.status === "open").length;
   const collected = (penalties ?? []).filter((p) => p.status === "paid").length;
-  const totalDebt = Object.values(balances?.balances ?? {}).reduce(
-    (sum, b) => sum + Math.max(0, -b.balance),
-    0,
-  );
+  const totalNachzahlung = totalNachzahlungen(balances?.balances ?? {});
 
   const tiles = [
     { to: "/admin/players", label: "Spieler", icon: Users, count: balances?.players.length },
@@ -52,8 +50,8 @@ export function AdminOverview() {
         </Card>
         <Card>
           <CardContent className="p-3">
-            <div className="text-xs text-muted-foreground">Schulden gesamt</div>
-            <div className="text-xl font-bold text-destructive">{formatEuro(totalDebt)}</div>
+            <div className="text-xs text-muted-foreground">Nachzahlungen</div>
+            <div className="text-xl font-bold text-destructive">{formatEuro(totalNachzahlung)}</div>
           </CardContent>
         </Card>
       </div>

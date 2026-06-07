@@ -38,8 +38,8 @@ export const BADGES: BadgeDef[] = [
   },
   {
     id: "first-cash",
-    title: "Im Plus!",
-    description: "Du stehst über -100 EUR. Saubere Sache.",
+    title: "Über der Einzahlung!",
+    description: "Dein Guthaben liegt über der Saison-Einzahlung.",
     emoji: "💰",
   },
   {

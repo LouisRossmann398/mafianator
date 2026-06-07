@@ -1,3 +1,4 @@
+import { DEFAULT_SEASON_DEPOSIT, seasonDeposit } from "@shared/balance";
 import { stores$ } from "./blobs.ts";
 import type { BalanceSummary, GoodDeed, Penalty, Season } from "@shared/types";
 
@@ -10,7 +11,7 @@ export async function getCurrentSeason(): Promise<Season> {
       id: "2025-26",
       name: "Saison 2025/26",
       startedAt: new Date().toISOString(),
-      startBalance: -100,
+      startBalance: DEFAULT_SEASON_DEPOSIT,
       active: true,
     };
     await stores$.seasons().set(fallback.id, fallback);
@@ -33,14 +34,15 @@ export async function computeBalances(): Promise<Record<string, BalanceSummary>>
     stores$.goodDeeds().all(),
   ]);
 
+  const deposit = seasonDeposit(season.startBalance);
   const map: Record<string, BalanceSummary> = {};
   for (const p of players) {
     map[p.id] = {
       playerId: p.id,
-      startBalance: season.startBalance,
+      startBalance: deposit,
       penaltiesSum: 0,
       goodDeedsSum: 0,
-      balance: season.startBalance,
+      balance: deposit,
     };
   }
 
@@ -67,10 +69,10 @@ export async function computeBalanceFor(playerId: string): Promise<BalanceSummar
   return (
     balances[playerId] ?? {
       playerId,
-      startBalance: -100,
+      startBalance: DEFAULT_SEASON_DEPOSIT,
       penaltiesSum: 0,
       goodDeedsSum: 0,
-      balance: -100,
+      balance: DEFAULT_SEASON_DEPOSIT,
     }
   );
 }

@@ -12,9 +12,11 @@ import {
   usePatchPenalty,
   useGoodDeeds,
 } from "@/api/penalties";
+import { BalanceBreakdown } from "@/components/BalanceBreakdown";
 import { PenaltyAdd } from "@/components/PenaltyAdd";
 import { formatDateTime, formatEuro } from "@/lib/format";
 import type { Penalty } from "@shared/types";
+import { guthabenTone } from "@shared/balance";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/cn";
 
@@ -85,30 +87,7 @@ function MeineSection() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardContent className="p-5 space-y-3">
-          <div className="text-xs uppercase tracking-wider text-muted-foreground">
-            Saison {season?.name}
-          </div>
-          <div
-            className={cn(
-              "text-5xl font-black tabular-nums",
-              (balance?.balance ?? -100) >= 0
-                ? "text-success"
-                : (balance?.balance ?? -100) < -100
-                  ? "text-destructive"
-                  : "text-foreground",
-            )}
-          >
-            {formatEuro(balance?.balance ?? -100)}
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-xs">
-            <Stat label="Start" value={formatEuro(balance?.startBalance ?? -100)} />
-            <Stat label="Strafen" value={`-${formatEuro(balance?.penaltiesSum ?? 0)}`} />
-            <Stat label="Gute Taten" value={`+${formatEuro(balance?.goodDeedsSum ?? 0)}`} />
-          </div>
-        </CardContent>
-      </Card>
+      <BalanceBreakdown balance={balance} seasonName={season?.name} compact />
 
       <div>
         <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Offene Strafen</h2>
@@ -170,7 +149,7 @@ function MannschaftSection() {
         balance: balanceData.balances[p.id],
       }))
       .filter((r) => r.balance)
-      .sort((a, b) => a.balance.balance - b.balance.balance);
+      .sort((a, b) => b.balance.balance - a.balance.balance);
   }, [balanceData, players]);
 
   return (
@@ -178,7 +157,7 @@ function MannschaftSection() {
       {isLoading && <div className="text-sm text-muted-foreground">Lade...</div>}
       <Card>
         <CardHeader className="p-4 pb-2">
-          <CardTitle className="text-base">Balances aller Spieler</CardTitle>
+          <CardTitle className="text-base">Guthaben aller Spieler</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <ul className="divide-y divide-border">
@@ -194,9 +173,9 @@ function MannschaftSection() {
                 <div
                   className={cn(
                     "tabular-nums font-semibold",
-                    balance.balance >= 0
+                    guthabenTone(balance.balance, balance.startBalance) === "success"
                       ? "text-success"
-                      : balance.balance < -100
+                      : guthabenTone(balance.balance, balance.startBalance) === "destructive"
                         ? "text-destructive"
                         : "text-foreground",
                   )}
@@ -217,24 +196,15 @@ function MannschaftSection() {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-border bg-background/40 p-2">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="font-semibold tabular-nums">{value}</div>
-    </div>
-  );
-}
-
 function PenaltyOpenCard({ penalty }: { penalty: Penalty }) {
   const { toast } = useToast();
   const patch = usePatchPenalty();
 
   const accept = async () => {
-    if (!confirm(`Strafe ueber ${formatEuro(penalty.amount)} akzeptieren?`)) return;
+    if (!confirm(`Strafe über ${formatEuro(penalty.amount)} vom Guthaben abbuchen?`)) return;
     try {
       await patch.mutateAsync({ id: penalty.id, action: "mark-paid" });
-      toast({ title: "Akzeptiert und bezahlt", variant: "success" });
+      toast({ title: "Vom Guthaben abgebucht", variant: "success" });
     } catch (e) {
       toast({
         title: "Fehler",
@@ -257,7 +227,7 @@ function PenaltyOpenCard({ penalty }: { penalty: Penalty }) {
           </div>
           <div className="text-right">
             <div className="font-bold tabular-nums text-destructive">
-              {formatEuro(penalty.amount)}
+              −{formatEuro(penalty.amount)}
             </div>
             {penalty.canGamble && (
               <Badge variant="success" className="text-[10px]">
@@ -275,7 +245,7 @@ function PenaltyOpenCard({ penalty }: { penalty: Penalty }) {
             </Link>
           ) : null}
           <Button onClick={accept} variant="outline" size="sm" className="flex-1">
-            <Check size={14} /> Akzeptieren
+            <Check size={14} /> Abgebucht
           </Button>
         </div>
       </CardContent>
@@ -287,7 +257,7 @@ function PenaltyHistoryCard({ penalty }: { penalty: Penalty }) {
   const statusBadge = () => {
     switch (penalty.status) {
       case "paid":
-        return <Badge variant="outline">bezahlt</Badge>;
+        return <Badge variant="outline">abgebucht</Badge>;
       case "gambled-won":
         return <Badge variant="success">Glücksrad gewonnen</Badge>;
       case "gambled-lost":

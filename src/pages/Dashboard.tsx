@@ -1,13 +1,7 @@
 import { Link } from "react-router-dom";
-import {
-  Wallet,
-  TrendingDown,
-  TrendingUp,
-  Coins,
-  Calendar,
-  Cake,
-} from "lucide-react";
+import { Coins, Calendar, Cake } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BalanceBreakdown } from "@/components/BalanceBreakdown";
 import { useAuth } from "@/api/auth";
 import { useBalances, useFeed, usePenalties } from "@/api/penalties";
 import { formatDate, formatDateTime, formatEuro, relativeDays } from "@/lib/format";
@@ -40,23 +34,6 @@ export function DashboardPage() {
     ? players?.find((p) => p.id === nextBirthday.playerId)
     : null;
 
-  const balanceColor =
-    (balance?.balance ?? -100) >= 0
-      ? "text-success"
-      : (balance?.balance ?? -100) < -100
-        ? "text-destructive"
-        : "text-foreground";
-
-  const progressPercent = Math.min(
-    100,
-    Math.max(
-      0,
-      (((balance?.balance ?? season?.startBalance ?? -100) - (season?.startBalance ?? -100)) /
-        Math.abs(season?.startBalance ?? -100)) *
-        100,
-    ),
-  );
-
   return (
     <div className="space-y-4">
       <div>
@@ -64,46 +41,7 @@ export function DashboardPage() {
         <h1 className="text-2xl font-bold">Dein Stand</h1>
       </div>
 
-      <Card className="overflow-hidden">
-        <CardContent className="p-5 space-y-3">
-          <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-muted-foreground">
-            <Wallet size={14} /> Saldo {season?.name && `· ${season.name}`}
-          </div>
-          <div className={cn("text-5xl font-black tabular-nums", balanceColor)}>
-            {formatEuro(balance?.balance ?? season?.startBalance ?? -100)}
-          </div>
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Start: {formatEuro(season?.startBalance ?? -100)}</span>
-              <span>0 €</span>
-            </div>
-            <div className="h-3 overflow-hidden rounded-full bg-secondary">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-primary to-success transition-all"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-border bg-background/40 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <TrendingDown size={12} /> Strafen
-              </div>
-              <div className="text-lg font-semibold tabular-nums">
-                {formatEuro(balance?.penaltiesSum ?? 0)}
-              </div>
-            </div>
-            <div className="rounded-lg border border-border bg-background/40 p-3">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <TrendingUp size={12} /> Gute Taten
-              </div>
-              <div className="text-lg font-semibold tabular-nums text-success">
-                +{formatEuro(balance?.goodDeedsSum ?? 0)}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <BalanceBreakdown balance={balance} seasonName={season?.name} />
 
       {openPenalties.length > 0 && (
         <Card>
@@ -122,11 +60,11 @@ export function DashboardPage() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">{p.reason}</div>
                     <div className="text-xs text-muted-foreground">
-                      {formatDateTime(p.createdAt)}
+                      {formatDateTime(p.createdAt)} · noch nicht abgebucht
                     </div>
                   </div>
                   <div className="font-bold tabular-nums text-destructive">
-                    -{formatEuro(p.amount)}
+                    −{formatEuro(p.amount)}
                   </div>
                 </li>
               ))}
@@ -203,8 +141,8 @@ export function DashboardPage() {
                         item.amount > 0 ? "text-success" : "text-destructive",
                       )}
                     >
-                      {item.amount > 0 ? "+" : ""}
-                      {formatEuro(item.amount)}
+                      {item.amount > 0 ? "+" : "−"}
+                      {formatEuro(Math.abs(item.amount))}
                     </div>
                   </li>
                 );

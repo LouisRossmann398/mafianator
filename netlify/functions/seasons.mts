@@ -1,6 +1,7 @@
 import { stores$ } from "./_lib/blobs.ts";
 import { requireAuth } from "./_lib/auth.ts";
 import { error, json, notAllowed } from "./_lib/response.ts";
+import { DEFAULT_SEASON_DEPOSIT } from "@shared/balance";
 import { getCurrentSeason } from "./_lib/balance.ts";
 import { getStore } from "@netlify/blobs";
 import type { Season } from "@shared/types";
@@ -51,7 +52,9 @@ export default async (req: Request): Promise<Response> => {
       const archiveSummary = await archiveCurrentSeason(current.id);
       await stores$.seasons().set(current.id, { ...current, active: false, endedAt: new Date().toISOString() });
       const newId = payload.id ?? `season-${Date.now()}`;
-      const startBalance = typeof payload.startBalance === "number" ? payload.startBalance : -100;
+      const raw =
+        typeof payload.startBalance === "number" ? payload.startBalance : DEFAULT_SEASON_DEPOSIT;
+      const startBalance = Math.abs(raw);
       const next: Season = {
         id: newId,
         name: payload.name ?? "Neue Saison",

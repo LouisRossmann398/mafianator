@@ -120,6 +120,7 @@ export interface Season {
   name: string;
   startedAt: string;
   endedAt?: string;
+  /** Saison-Einzahlung pro Spieler (positiv, z. B. 100 €). */
   startBalance: number;
   active: boolean;
 }
@@ -150,9 +151,11 @@ export interface AchievementsRecord {
 
 export interface BalanceSummary {
   playerId: string;
+  /** Saison-Einzahlung (Guthaben zu Beginn). */
   startBalance: number;
   penaltiesSum: number;
   goodDeedsSum: number;
+  /** Aktuelles Kassen-Guthaben (Einzahlung − Strafen + Gute Taten). */
   balance: number;
 }
 
