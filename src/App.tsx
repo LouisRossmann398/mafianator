@@ -4,10 +4,8 @@ import { AppShell } from "./components/layout/AppShell";
 import { LoginPage } from "./pages/Login";
 import { DashboardPage } from "./pages/Dashboard";
 import { PenaltiesPage } from "./pages/Penalties";
-import { TippenPage } from "./pages/Tippen";
 import { KalenderPage } from "./pages/Kalender";
 import { ProfilPage } from "./pages/Profil";
-import { TabellePage } from "./pages/Tabelle";
 import { WheelHistoryPage } from "./pages/WheelHistory";
 import { GamblePage } from "./pages/Gamble";
 import { AdminLayout } from "./pages/admin/AdminLayout";
@@ -60,8 +58,6 @@ export default function App() {
         <Route index element={<DashboardPage />} />
         <Route path="strafen" element={<PenaltiesPage />} />
         <Route path="strafen/:id/zocken" element={<GamblePage />} />
-        <Route path="tippen" element={<TippenPage />} />
-        <Route path="tippen/tabelle" element={<TabellePage />} />
         <Route path="kalender" element={<KalenderPage />} />
         <Route path="profil" element={<ProfilPage />} />
         <Route path="gluecksrad/historie" element={<WheelHistoryPage />} />

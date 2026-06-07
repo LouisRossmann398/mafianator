@@ -9,8 +9,7 @@ import { formatEuro } from "@/lib/format";
 export function AdminOverview() {
   const { data: balances } = useBalances();
   const { data: penalties } = usePenalties();
-  const { data } = useMatches();
-  const matches = data?.matches;
+  const { data: matches } = useMatches();
   const { data: users } = useUsers();
 
   const open = (penalties ?? []).filter((p) => p.status === "open").length;
@@ -71,8 +70,7 @@ export function AdminOverview() {
       <Card>
         <CardContent className="p-4 text-xs text-muted-foreground flex items-center gap-2">
           <Calendar size={14} />
-          FuPa-Synchronisation läuft stündlich, Tipp-Auswertung alle 2 Stunden. Du kannst beides
-          manuell im Bereich „Spiele" anstoßen.
+          SVP-Spiele für den Kalender werden unter „Spiele" manuell gepflegt.
         </CardContent>
       </Card>
     </div>

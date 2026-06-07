@@ -31,12 +31,6 @@ export const BADGES: BadgeDef[] = [
     emoji: "💀",
   },
   {
-    id: "tipp-prophet",
-    title: "Hellseher",
-    description: "5 Tipps in Folge richtig.",
-    emoji: "🔮",
-  },
-  {
     id: "good-samaritan",
     title: "Putzteufel",
     description: "3 Gute-Tat-Boni in einem Monat.",

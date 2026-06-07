@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCcw, Plus, Pencil, Trash2 } from "lucide-react";
-import { apiFetch } from "@/api/client";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/input";
@@ -13,67 +11,22 @@ import {
   useCreateMatch,
   useDeleteMatch,
   useMatches,
-  useTriggerScrape,
   useUpdateMatch,
 } from "@/api/matches";
 import { formatDateTime } from "@/lib/format";
 import type { Match, TeamId } from "@shared/types";
 
-interface ScrapeStatus {
-  lastRun: string;
-  matchesTotal: number;
-  matchesCreated: number;
-  matchesUpdated: number;
-  lastError?: string;
-}
-
 export function AdminMatches() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
-  const { data } = useMatches();
-  const matches = data?.matches;
-  const trigger = useTriggerScrape();
+  const { data: matches } = useMatches();
   const remove = useDeleteMatch();
   const update = useUpdateMatch();
   const create = useCreateMatch();
   const { toast } = useToast();
-  const qc = useQueryClient();
-  const status = useQuery({
-    queryKey: ["scrape-status"],
-    queryFn: () => apiFetch<{ status: ScrapeStatus | null }>("/scrape-trigger").then((d) => d.status),
-  });
   const [dialog, setDialog] = useState<
     null | { mode: "create" } | { mode: "edit"; match: Match } | { mode: "result"; match: Match }
   >(null);
-
-  const onScrape = async () => {
-    try {
-      const result = await trigger.mutateAsync();
-      await qc.invalidateQueries({ queryKey: ["scrape-status"] });
-      await qc.invalidateQueries({ queryKey: ["matches"] });
-      if (result.lastError || (result.matchesTotal ?? 0) === 0) {
-        toast({
-          title: "Scrape fehlgeschlagen",
-          description:
-            result.lastError ??
-            "FuPa lieferte 0 Spiele. Netlify-Logs prüfen oder später erneut versuchen.",
-          variant: "destructive",
-        });
-        return;
-      }
-      toast({
-        title: "Scrape erfolgreich",
-        description: `${result.matchesTotal} Spiele (${result.matchesCreated ?? 0} neu)`,
-        variant: "success",
-      });
-    } catch (e) {
-      toast({
-        title: "Fehler",
-        description: e instanceof Error ? e.message : "Unbekannt",
-        variant: "destructive",
-      });
-    }
-  };
 
   const onDelete = async (id: string) => {
     if (!confirm("Spiel loeschen?")) return;
@@ -116,38 +69,18 @@ export function AdminMatches() {
   return (
     <div className="space-y-3">
       <Card>
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-xs uppercase tracking-wider text-muted-foreground">Scraper</div>
-              <div className="text-sm font-medium">FuPa-Synchronisation</div>
-            </div>
-            {isAdmin && (
-              <Button onClick={onScrape} loading={trigger.isPending} size="sm">
-                <RefreshCcw size={14} /> Jetzt scrapen
-              </Button>
-            )}
-          </div>
-          {status.data ? (
-            <div className="text-xs text-muted-foreground space-y-0.5">
-              <div>
-                Letzter Lauf: {formatDateTime(status.data.lastRun)} ·{" "}
-                {status.data.matchesTotal} Spiele · {status.data.matchesCreated} neu ·{" "}
-                {status.data.matchesUpdated} aktualisiert
-              </div>
-              {status.data.lastError && (
-                <div className="text-destructive">Fehler: {status.data.lastError}</div>
-              )}
-            </div>
-          ) : (
-            <div className="text-xs text-muted-foreground">Noch nicht gelaufen.</div>
-          )}
+        <CardContent className="p-4 text-xs text-muted-foreground space-y-1">
+          <div className="text-sm font-medium text-foreground">SVP-Spiele (Kalender)</div>
+          <p>
+            Spiele werden hier manuell gepflegt und erscheinen im Kalender und auf dem Dashboard.
+            Automatischer Import von FuPa/BFV ist deaktiviert.
+          </p>
         </CardContent>
       </Card>
 
       {isAdmin && (
         <Button onClick={() => setDialog({ mode: "create" })} className="w-full">
-          <Plus size={16} /> Spiel manuell anlegen
+          <Plus size={16} /> Spiel anlegen
         </Button>
       )}
 
@@ -178,7 +111,6 @@ export function AdminMatches() {
                       kommend
                     </Badge>
                   )}
-                  <div className="text-[10px] text-muted-foreground">{m.source}</div>
                 </div>
                 {isAdmin && (
                   <div className="flex flex-col gap-1">

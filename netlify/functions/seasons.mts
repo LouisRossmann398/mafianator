@@ -6,7 +6,7 @@ import { getStore } from "@netlify/blobs";
 import type { Season } from "@shared/types";
 
 async function archiveCurrentSeason(seasonId: string): Promise<{ archived: number }> {
-  const sourceNames = ["penalties", "goodDeeds", "bets", "achievements"] as const;
+  const sourceNames = ["penalties", "goodDeeds", "achievements"] as const;
   let archived = 0;
   for (const name of sourceNames) {
     const source = getStore({ name: `mafianator-${name}`, consistency: "strong" });

@@ -12,8 +12,6 @@ export type UserPublic = Omit<UserRecord, "passwordHash">;
 
 export type TeamId = 1 | 2;
 
-export type LeagueKey = "kreisklasse" | "c-klasse";
-
 export interface Player {
   id: string;
   name: string;
@@ -64,14 +62,12 @@ export interface CatalogEntry {
   canGamble: boolean;
 }
 
+/** SVP-Spiel für Kalender (manuell gepflegt). */
 export interface Match {
   id: string;
-  leagueKey: LeagueKey;
-  round?: number;
-  homeTeamName: string;
-  awayTeamName: string;
-  involvesSvp: boolean;
-  tippable: boolean;
+  team: TeamId;
+  opponent: string;
+  homeAway: "home" | "away";
   kickoff: string;
   location?: string;
   league: string;
@@ -79,24 +75,8 @@ export interface Match {
     homeGoals: number;
     awayGoals: number;
   };
-  source: "fupa" | "manual" | "bfv";
-  scrapedAt?: string;
+  source: "manual";
   updatedAt: string;
-  /** Kalender / SVP-Spiele (optional bei reinen Liga-Spielen) */
-  team?: TeamId;
-  opponent?: string;
-  homeAway?: "home" | "away";
-}
-
-export interface Bet {
-  id: string;
-  userId: string;
-  matchId: string;
-  homeGoals: number;
-  awayGoals: number;
-  submittedAt: string;
-  points?: number;
-  evaluatedAt?: string;
 }
 
 export interface Season {
@@ -128,7 +108,6 @@ export interface AchievementsRecord {
     goodDeedsAmount: number;
     gamblesWon: number;
     gamblesLost: number;
-    betsCorrectInARow: number;
     longestStreakPenaltyFreeDays: number;
   };
 }

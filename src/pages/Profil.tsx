@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Lock, Award, Target, TrendingDown, TrendingUp, Coins, Trophy } from "lucide-react";
+import { Lock, Award, TrendingDown, TrendingUp, Coins } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/input";
@@ -8,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { useAuth } from "@/api/auth";
 import { useBalances, usePenalties, useGoodDeeds } from "@/api/penalties";
-import { useMyBets, useLeaderboard } from "@/api/bets";
 import { useAchievements } from "@/api/achievements";
 import { BADGES, BADGE_BY_ID } from "@shared/achievements";
 import { apiFetch } from "@/api/client";
@@ -20,16 +19,10 @@ export function ProfilPage() {
   const { data: balances } = useBalances();
   const { data: penalties } = usePenalties(user?.playerId);
   const { data: goodDeeds } = useGoodDeeds(user?.playerId);
-  const { data: bets } = useMyBets();
-  const { data: leaderboard } = useLeaderboard();
   const { data: achievements } = useAchievements();
   const balance = balances?.balances?.[user?.playerId ?? ""];
   const [pwOpen, setPwOpen] = useState(false);
   const { toast } = useToast();
-
-  const myRank = leaderboard?.findIndex((r) => r.userId === user?.username) ?? -1;
-  const evaluatedBets = bets?.filter((b) => typeof b.points === "number") ?? [];
-  const totalPoints = evaluatedBets.reduce((sum, b) => sum + (b.points ?? 0), 0);
 
   const unlockedIds = new Set(achievements?.badges.map((b) => b.id) ?? []);
 
@@ -64,11 +57,6 @@ export function ProfilPage() {
           tone={(balance?.balance ?? -100) >= 0 ? "success" : "default"}
         />
         <Stat
-          icon={<Trophy size={14} />}
-          label="Tipp-Punkte"
-          value={String(totalPoints)}
-        />
-        <Stat
           icon={<TrendingDown size={14} />}
           label="Strafen"
           value={`${penalties?.length ?? 0}`}
@@ -81,14 +69,9 @@ export function ProfilPage() {
           tone="success"
         />
         <Stat
-          icon={<Target size={14} />}
-          label="Tipps gewertet"
-          value={`${evaluatedBets.length}`}
-        />
-        <Stat
           icon={<Award size={14} />}
-          label="Platz Tipp"
-          value={myRank >= 0 ? `#${myRank + 1}` : "—"}
+          label="Achievements"
+          value={`${achievements?.badges.length ?? 0}/${BADGES.length}`}
         />
       </div>
 

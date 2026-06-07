@@ -1,11 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Home, Coins, Target, Calendar, User } from "lucide-react";
+import { Home, Coins, Calendar, User } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const items = [
   { to: "/", label: "Home", icon: Home, end: true },
   { to: "/strafen", label: "Strafen", icon: Coins },
-  { to: "/tippen", label: "Tippen", icon: Target },
   { to: "/kalender", label: "Kalender", icon: Calendar },
   { to: "/profil", label: "Profil", icon: User },
 ];

@@ -6,8 +6,6 @@ import {
   Coins,
   Calendar,
   Cake,
-  Target,
-  Trophy,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/api/auth";
@@ -170,28 +168,6 @@ export function DashboardPage() {
             </CardContent>
           </Card>
         )}
-        <Link to="/tippen">
-          <Card className="h-full">
-            <CardContent className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Target size={12} /> Tipprunde
-              </div>
-              <div className="text-sm font-semibold leading-tight">Jetzt tippen</div>
-              <div className="text-xs text-muted-foreground">Spiele 1. + 2. Mannschaft</div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link to="/tippen/tabelle">
-          <Card className="h-full">
-            <CardContent className="p-4 space-y-1">
-              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Trophy size={12} /> Tabelle
-              </div>
-              <div className="text-sm font-semibold leading-tight">Tipper-Rangliste</div>
-              <div className="text-xs text-muted-foreground">Wer wird Meister?</div>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       {feed && feed.length > 0 && (
