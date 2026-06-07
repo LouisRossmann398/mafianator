@@ -1,8 +1,7 @@
 import { stores$ } from "./_lib/blobs.ts";
 import { requireAuth } from "./_lib/auth.ts";
 import { error, json, notAllowed } from "./_lib/response.ts";
-import { DEFAULT_SEASON_DEPOSIT } from "@shared/balance";
-import { getCurrentSeason } from "./_lib/balance.ts";
+import { DEFAULT_SEASON_DEPOSIT, getCurrentSeason } from "./_lib/balance.ts";
 import { getStore } from "@netlify/blobs";
 import type { Season } from "@shared/types";
 

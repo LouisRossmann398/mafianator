@@ -1,6 +1,12 @@
-import { DEFAULT_SEASON_DEPOSIT, seasonDeposit } from "@shared/balance";
 import { stores$ } from "./blobs.ts";
 import type { BalanceSummary, GoodDeed, Penalty, Season } from "@shared/types";
+
+/** Muss mit shared/balance.ts übereinstimmen (kein @shared-Import in Functions). */
+export const DEFAULT_SEASON_DEPOSIT = 100;
+
+export function seasonDeposit(startBalance: number): number {
+  return Math.abs(startBalance);
+}
 
 export async function getCurrentSeason(): Promise<Season> {
   const all = await stores$.seasons().all();
