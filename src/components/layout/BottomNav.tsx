@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Home, Coins, Calendar, User } from "lucide-react";
+import { Home, Coins, Calendar, Trophy, User } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const items = [
   { to: "/", label: "Home", icon: Home, end: true },
+  { to: "/tippen", label: "Tippen", icon: Trophy },
   { to: "/strafen", label: "Strafen", icon: Coins },
   { to: "/kalender", label: "Kalender", icon: Calendar },
   { to: "/profil", label: "Profil", icon: User },

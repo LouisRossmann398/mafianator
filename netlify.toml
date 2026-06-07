@@ -23,3 +23,9 @@
 
 [functions."auth-login"]
   timeout = 15
+
+[functions."league-matches"]
+  timeout = 30
+
+[functions."bfv-sync"]
+  timeout = 30

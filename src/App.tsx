@@ -16,6 +16,8 @@ import { AdminSeason } from "./pages/admin/Season";
 import { AdminMatches } from "./pages/admin/Matches";
 import { AdminBirthdays } from "./pages/admin/Birthdays";
 import { AdminUsers } from "./pages/admin/Users";
+import { TippenPage } from "./pages/Tippen";
+import { TabellePage } from "./pages/Tabelle";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -59,6 +61,8 @@ export default function App() {
         <Route path="strafen" element={<PenaltiesPage />} />
         <Route path="strafen/:id/zocken" element={<GamblePage />} />
         <Route path="kalender" element={<KalenderPage />} />
+        <Route path="tippen" element={<TippenPage />} />
+        <Route path="tippen/tabelle" element={<TabellePage />} />
         <Route path="profil" element={<ProfilPage />} />
         <Route path="gluecksrad/historie" element={<WheelHistoryPage />} />
         <Route

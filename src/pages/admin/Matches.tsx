@@ -73,7 +73,7 @@ export function AdminMatches() {
           <div className="text-sm font-medium text-foreground">SVP-Spiele (Kalender)</div>
           <p>
             Spiele werden hier manuell gepflegt und erscheinen im Kalender und auf dem Dashboard.
-            Automatischer Import von FuPa/BFV ist deaktiviert.
+            Die Tipprunde nutzt separat Ligaspiele vom BFV (Saison 25/26).
           </p>
         </CardContent>
       </Card>

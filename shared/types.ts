@@ -12,6 +12,8 @@ export type UserPublic = Omit<UserRecord, "passwordHash">;
 
 export type TeamId = 1 | 2;
 
+export type LeagueKey = "kreisklasse" | "c-klasse";
+
 export interface Player {
   id: string;
   name: string;
@@ -77,6 +79,40 @@ export interface Match {
   };
   source: "manual";
   updatedAt: string;
+}
+
+/** Ligaspiel für die Tipprunde (BFV-Import). */
+export interface LeagueMatch {
+  id: string;
+  seasonId: string;
+  leagueKey: LeagueKey;
+  round: number;
+  homeTeamName: string;
+  awayTeamName: string;
+  involvesSvp: boolean;
+  tippable: boolean;
+  kickoff: string;
+  league: string;
+  result?: {
+    homeGoals: number;
+    awayGoals: number;
+  };
+  bfvMatchId: string;
+  source: "bfv";
+  scrapedAt: string;
+  updatedAt: string;
+  team?: TeamId;
+}
+
+export interface Bet {
+  id: string;
+  userId: string;
+  matchId: string;
+  homeGoals: number;
+  awayGoals: number;
+  submittedAt: string;
+  points?: number;
+  evaluatedAt?: string;
 }
 
 export interface Season {
